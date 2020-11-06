@@ -1,0 +1,23 @@
+#!/bin/bash
+# Copyright (C) 2000-2016 Synology Inc. All rights reserved.
+
+# set include projects to install into this package
+INST_DIR="/tmp/_KodExplorer" # temp folder for dsm files
+PKG_DIR="/tmp/_KodExplorer_pkg" # temp folder for package files
+PKG_DEST="/image/packages"
+
+# prepare install and package dir
+for dir in $INST_DIR $PKG_DIR; do
+    rm -rf "$dir"
+done
+for dir in $INST_DIR $PKG_DIR $PKG_DEST; do
+    mkdir -p "$dir" # use default mask
+done
+
+make INSTALLDIR=$INST_DIR install
+make PACKAGEDIR=$PKG_DIR package
+
+. "/pkgscripts-ng/include/pkg_util.sh"
+pkg_make_package $INST_DIR $PKG_DIR
+pkg_make_spk $PKG_DIR $PKG_DEST
+
