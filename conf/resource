@@ -5,7 +5,7 @@
             "display_name": "KodExplorer",
             "support_alias": true,
             "support_server": true,
-            "type": "nginx_php",
+            "type": "apache_php",
             "root": "kodexplorer",
             "backend": 1,
             "icon": "ui/kodexplorer_{0}.png",
