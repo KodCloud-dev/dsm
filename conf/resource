@@ -44,7 +44,7 @@
             "app": "SYNO.SDS.KodExplorer"
         }],
         "pkg_dir_prepare": [{
-            "source": "/var/packages/kodexplorer/target/web",
+            "source": "/var/packages/KodExplorer/target/web",
             "target": "kodexplorer",
             "mode": "0755",
             "user": "KodExplorer",
