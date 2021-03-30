@@ -1,3 +1,3 @@
 ```
-/toolkit/pkgscripts-ng/PkgCreate.py -p avoton -c kodexplorer
+/toolkit/pkgscripts-ng/PkgCreate.py -p avoton -c KodExplorer
 ```
