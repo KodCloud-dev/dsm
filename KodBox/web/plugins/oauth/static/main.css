@@ -1,0 +1,76 @@
+/* 登录页 */
+.page-model-login .more-login-area {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    position: relative;
+    width: 90%;
+    /* margin: 20px auto 20px; */
+    margin: 10px auto 15px;
+}
+.page-model-login .more-login-area .more-login-words {
+    position: relative;
+    top: 9px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #fff;
+    font-size: 0.9em;
+}
+
+.page-model-login .login-third-box{
+    height: 30px;
+    line-height: 30px;
+}
+.page-model-login .login-third-box .third-item {
+    display: inline-block;
+    cursor: pointer;
+    /* width: 35px;
+    height: 30px;
+    background: url("../../../static/images/common/icon-sn-cr.png") -80px 0px no-repeat; */
+    font-size: 20px;
+    margin: 0px 3px;
+}
+
+.page-model-login .login-third-box .third-item:active,
+.page-model-login .login-third-box .third-item:hover {opacity: 0.6;}
+/* .page-model-login .login-third-box .box-qq {background-position:-80px 0px;}
+.page-model-login .login-third-box .box-weixin {background-position:-248px 0px;}
+.page-model-login .login-third-box .box-github {background-position:-24px 0px;}
+.page-model-login .login-third-box .box-google {background-position:4px 0px;}
+.page-model-login .login-third-box .box-facebook {background-position:-136px -0px;} */
+
+/* 插件配置 */
+.app-config-oauth.dialog-plugin-config .panel-form-body .form-row[data-key=list] .type-list p{
+    /* height: 32px;line-height: 32px; */
+    height: 28px;line-height: 28px;
+}
+.app-config-oauth.dialog-plugin-config .panel-form-body .form-row[data-key=list] .type-list p>i{
+    display: inline-block; 
+    width: 30px;
+    text-align: left;
+}
+.app-config-oauth.dialog-plugin-config .panel-form-body .form-row[data-key=list] .type-list p>span{
+    display: inline-block; 
+    width: calc(100% - 120px);
+    text-align: left;
+}
+.app-config-oauth.dialog-plugin-config .panel-form-body .form-row[data-key=list] .type-list .fq-desc{
+    font-size: 0.8em;
+    color: #949494;
+    display: block;
+    /* text-align: center; */
+    padding-left: 30px;
+}
+.app-config-oauth.dialog-plugin-config .panel-form-body .form-row[data-key=list] .type-list .web-url{
+    color: #949494;
+}
+
+/* 插件接口描述 */
+.admin-main-content .plugin-page .app-descript .data-app[data-app='oauth']+.right-content .api-title{
+    display: inline-block;
+    width: 80px;
+}
+
+.font-icon.ri-qq-fill.with-color{color: #199ae3 !important;}
+.font-icon.ri-wechat-fill.with-color{color: #1ab31e !important;}
+.font-icon.ri-github-fill.with-color{color: #333333 !important;}
+.font-icon.ri-google-fill.with-color{color: #3785f3 !important;}
+.font-icon.ri-facebook-fill.with-color{color: #4964a1 !important;}

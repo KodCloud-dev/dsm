@@ -1,0 +1,150 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+. "$(dirname "$0")"/string_loader
+. "$(dirname "$0")"/../WIZARD_UIFILES/wizard_common
+. "$(dirname "$0")"/../WIZARD_UIFILES/wizard_customized
+
+CustomRemoveBackupConf()
+{
+	local backup_info="/var/packages/.$PKG_DIR.conf"
+	[ -s "$backup_info" ] && rm -f "$backup_info"
+}
+
+CustomMoveLegacyBackupWebDir()
+{
+	local legacy_backup_path="$1"
+	local backup_web_dir="$(GetBackupWebDir)"
+	mkdir -p "${backup_web_dir}"
+	for item in $(ls -A $legacy_backup_path/ | grep -v backup_web_dir); do
+		cp -a "$legacy_backup_path/$item" "${backup_web_dir}/"
+	done
+}
+
+CustomChangeDBUserInfo()
+{
+	:
+}
+
+CustomRemove()
+{
+	:
+}
+
+CustomPreupgrade()
+{
+	:
+}
+
+CustomPreuninst()
+{
+	:
+}
+
+CustomBackupData()
+{
+	:
+}
+
+CustomPostuninst()
+{
+	:
+}
+
+CustomPreinst()
+{
+	:
+}
+
+CustomPostinst()
+{
+	:
+}
+
+CustomRestore()
+{
+	:
+}
+
+CustomRestoreUpgrade()
+{
+	:
+}
+
+CustomUseUnixSocket()
+{
+	:
+}
+
+CustomSetCleanNew()
+{
+	:
+}
+
+CustomNewInst()
+{
+	:
+}
+
+CustomSetInit()
+{
+	:
+}
+
+CustomWriteInfo()
+{
+	:
+}
+
+CustomPostupgrade()
+{
+	:
+}
+
+CustomStart()
+{
+	:
+}
+
+CustomStop()
+{
+	:
+}
+
+QuoteSQLString()
+{
+	sed -e 's|\\|\\\\|g' -e 's|`|\\`|g'
+}
+
+QuoteSed()
+{
+	sed -e 's|\\|\\\\|g' -e 's|&|\\\&|g'
+}
+
+QuotePHP()
+{
+	sed -e 's|\\|\\\\|g' -e "s|'|\\\\'|g"
+}
+
+QuoteSh()
+{
+	sed -e 's|\\|\\\\|g' -e 's|\"|\\\"|g' -e 's|`|\\`|g' -e 's|\$|\\\$|g'
+}
+
+EscapeSlashDelimiterAndSingleQuote()
+{
+	sed -e "s|'|\\\\'|g" -e 's|/|\\\/|g'
+}
+
+EscapeStandardSedString()
+{
+	QuoteSed | EscapeSlashDelimiterAndSingleQuote
+}
+
+EscapeStandardSedStringOnPHP()
+{
+	QuotePHP | EscapeStandardSedString
+}
+
+# must be in the last for overriding
+. "$(dirname "$0")"/script_customized

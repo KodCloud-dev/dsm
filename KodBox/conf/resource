@@ -1,0 +1,113 @@
+{
+   "webservice": {
+      "services": [
+         {
+            "service": "kodbox",
+            "display_name": "KodBox",
+            "support_alias": true,
+            "support_server": true,
+            "type": "apache_php",
+            "root": "kodbox",
+            "backend": 2,
+            "icon": "ui/kodbox_{0}.png",
+            "php": {
+               "profile_name": "KodBox Profile",
+               "profile_desc": "PHP Profile for KodBox",
+               "backend": 8,
+               "open_basedir": "/var/services/web_packages/kodbox:/tmp:/var/services/tmp",
+               "extensions": [
+                  "bz2",
+                  "curl",
+                  "ftp",
+                  "exif",
+                  "gd",
+                  "gettext",
+                  "iconv",
+                  "imagick",
+                  "intl",
+                  "ldap",
+                  "mysqli",
+                  "openssl",
+                  "pdo_mysql",
+                  "pdo_sqlite",
+                  "sockets",
+                  "sqlite3",
+                  "zip",
+                  "zlib"
+               ],
+               "php_settings": {
+                  "mysql.default_socket": "/run/mysqld/mysqld10.sock",
+                  "mysqli.default_socket": "/run/mysqld/mysqld10.sock",
+                  "pdo_mysql.default_socket": "/run/mysqld/mysqld10.sock",
+                  "display_errors": "1",
+                  "error_reporting": "E_ALL",
+                  "log_errors": "true",
+                  "post_max_size": "512M",
+                  "upload_max_filesize": "512M",
+                  "memory_limit": "512M",
+                  "max_execution_time": "3600",
+                  "max_input_time": "3600",
+                  "cgi.fix_pathinfo": "1"
+               },
+               "fpm-conf": [
+                  {
+                     "relpath": "synology_added/etc/php/fpm.d/kodbox-fpm.conf"
+                  }
+               ],
+               "user": "KodBox",
+               "group": "http"
+            },
+            "connect_timeout": 60,
+            "read_timeout": 3600,
+            "send_timeout": 3600
+         }
+      ],
+      "portals": [
+         {
+            "service": "kodbox",
+            "type": "alias",
+            "name": "KodBox",
+            "alias": "kodbox",
+            "app": "SYNO.SDS.KodBox"
+         }
+      ],
+      "pkg_dir_prepare": [
+         {
+            "source": "/var/packages/KodBox/target/web",
+            "target": "kodbox",
+            "mode": "0755",
+            "user": "KodBox",
+            "group": "http"
+         }
+      ]
+   },
+   "mariadb10-db": {
+      "admin-account-m10": "{{wizard_m10_acc}}",
+      "admin-pw-m10": "{{wizard_m10_pass}}",
+      "admin-account-m5": "{{wizard_m5_acc}}",
+      "admin-pw-m5": "{{wizard_m5_pass}}",
+      "migrate-db": {
+         "flag": "{{need_migrate}}",
+         "m5-db-name": "{{old_db_name}}",
+         "m10-db-name": "{{pkgwizard_db_name}}",
+         "db-collision": "error"
+      },
+      "create-db": {
+         "flag": "{{create_db_flag}}",
+         "db-name": "{{pkgwizard_db_name}}",
+         "db-collision": "{{create_db_collision}}"
+      },
+      "grant-user": {
+         "flag": "{{grant_user_flag}}",
+         "db-name": "{{pkgwizard_db_name}}",
+         "user-name": "{{pkgwizard_db_user_account}}",
+         "user-pw": "{{pkgwizard_db_user_password}}"
+      },
+      "drop-db-inst": {
+         "flag": "{{drop_db_flag}}",
+         "ver": "{{mariadb_ver}}",
+         "db-name": "{{old_db_name}}"
+      },
+      "drop-db-uninst": "{{pkgwizard_remove_additional}}"
+   }
+}

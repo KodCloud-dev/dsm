@@ -1,0 +1,20 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+. "/var/packages/KodBox/scripts/db_hooks_common"
+CONFIG_FILE="/var/services/web_packages/kodbox/config/setting_user.php"
+
+if [ ! -e "$2" ]; then
+    logger -p 0 "$0: $2 not exist!"
+    exit 1
+fi
+
+[ ! -f "$CONFIG_FILE" ] && exit 0
+
+user="$1"
+dbuser="$(sed -n "s/\s*'DB_USER'\s*=>\s*'\(.*\)',$/\1/p" < $CONFIG_FILE | UnquotePHP)"
+
+[ "$user" != "$dbuser" ]  && exit 0
+
+pw="$(cat "$2" | QuotePHP | QuoteSed)"
+sed -i "s/\s*'DB_PWD'.*$/  'DB_PWD' => \'"$pw"\');/" $CONFIG_FILE

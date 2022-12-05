@@ -1,0 +1,9 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+LANG_FILE="$(dirname "$0")/lang/$SYNOPKG_DSM_LANGUAGE"
+if [ -f "$LANG_FILE" ]; then
+	. "$LANG_FILE"
+else
+	. "$(dirname "$0")/lang/default"
+fi

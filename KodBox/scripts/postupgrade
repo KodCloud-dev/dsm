@@ -1,0 +1,8 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+. "$(dirname "$0")"/common
+
+CustomPostupgrade
+
+exit 0

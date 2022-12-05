@@ -1,0 +1,23 @@
+#!/bin/sh
+# Copyright (C) 2000-2017 Synology Inc. All rights reserved.
+
+QuotePHP() {
+	sed -e 's|\\|\\\\|g' \
+		-e "s|'|\\\\'|g"
+}
+
+QuoteXML() {
+	php -r "echo htmlspecialchars(fgets(STDIN));"
+}
+
+QuoteSed() {
+	sed -e 's|\\|\\\\|g' -e 's|&|\\\&|g'
+}
+
+UnquotePHP() {
+	php -r "eval(\"echo '\".fgets(STDIN).\"';\");"
+}
+
+UnquoteXML() {
+	php -r "echo html_entity_decode(fgets(STDIN));"
+}

@@ -1,0 +1,31 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+. "$(dirname "$0")"/common
+
+[ -f /var/packages/MariaDB10/enabled ] && RunMySQL="yes" || RunMySQL="no"
+
+ADMIN_ACCOUNT="$wizard_m10_acc"
+ADMIN_PASS="$wizard_m10_pass"
+# empty
+CustomPreuninst
+
+if [ "$SYNOPKG_PKG_STATUS" = "UNINSTALL" ]; then
+	if $REQUIRE_DB_SETUP; then
+		if [ "$RunMySQL" = "yes" ]; then
+			DBAdminCheck "$ADMIN_ACCOUNT" "$ADMIN_PASS" "$MYSQL" "$m10_admin_permission_error" || exit 1
+		else
+			echo "$sql_not_run" >> "$SYNOPKG_TEMP_LOGFILE"
+		fi
+	fi
+	rm -rf "$(GetBackupPath)" "$INFO_FILE"
+# upgrade时执行备份
+else
+	rm -rf "$(GetBackupPath)"
+	CustomRemove
+	CustomBackupData
+	echo "path=$(GetBackupPath)" >> "$INFO_FILE"
+	echo "version=$SYNOPKG_PKGVER" >> "$INFO_FILE"
+fi
+
+exit 0

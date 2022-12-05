@@ -1,0 +1,46 @@
+#!/bin/bash
+
+. "$(dirname "$0")"/common
+# empty
+CustomPostinst
+
+MoveLegacyBackupDataToDSM7BackupPath()
+{
+	local dsm7_backup_path="$(GetBackupPath)"
+	if [ -e "$dsm7_backup_path" ]; then
+		return
+	fi
+
+	local legacy_backup_path="$(GetLegacyBackupDataPrefix)"
+	if [ -z "$legacy_backup_path" ] || [ ! -e "$legacy_backup_path" ]; then
+		return
+	fi
+
+	echo "migrate legacy backup data in [${legacy_backup_path}] to DSM backup path"
+	mv "$legacy_backup_path" "${dsm7_backup_path}"
+	CustomMoveLegacyBackupWebDir "$dsm7_backup_path"
+}
+
+MoveLegacyBackupDataToDSM7BackupPath
+
+if [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ]; then
+	InitBackupPath
+	# Restore
+	if CustomHasRunWebsiteSetup "$BACKUP_WEB_PATH"; then
+		CustomRestoreUpgrade
+	else
+		CustomSetCleanNew
+	fi
+	chown -R $PKG_NAME:http      "$WEBSITE_ROOT"
+	chown -R $PKG_NAME:$PKG_NAME "$(GetBackupPath)"
+else
+	# New install
+	CustomNewInst
+fi
+
+# Set initial install setting values
+CustomSetInit
+
+CustomRemoveBackupConf
+
+exit 0

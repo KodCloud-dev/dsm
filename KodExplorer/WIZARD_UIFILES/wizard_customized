@@ -1,0 +1,18 @@
+#!/bin/bash
+
+PKG_NAME="KodExplorer"
+PKG_DIR="kodexplorer"
+WEBSITE_ROOT="/var/services/web_packages/$PKG_DIR"
+INFO_FILE="/usr/syno/etc/packages/$PKG_NAME/$PKG_DIR.conf"
+CONF_FILE="config/setting_user.php"
+INST_FILE="data/system/install.lock"
+
+CustomMainInstall()
+{
+
+}
+
+UnQuotePHP()
+{
+	sed -e "s|\\\\'|'|g" -e 's|\\\\|\\|g'
+}

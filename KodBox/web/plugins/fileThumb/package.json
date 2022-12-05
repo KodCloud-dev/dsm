@@ -1,0 +1,117 @@
+{
+	"id":"fileThumb",
+	"name":"{{LNG['fileThumb.meta.name']}}",
+	"title":"{{LNG['fileThumb.meta.title']}}",
+	"version":"1.85",// 2022.12.2
+	"category":"file,media",
+	"source":{
+		"icon":"{{pluginHost}}static/icon.png"
+	},
+	"description":"{{LNG['fileThumb.meta.desc']}}",
+
+	"auther":{
+		"copyright":"kodcloud",
+		"homePage":"http://kodcloud.com"
+	},
+	"configItem":{
+		"formStyle":{
+			"loadFile":"{{pluginHost}}static/check.js",
+			"tabs":{
+				"{{LNG['admin.setting.base']}}":"pluginAuth,imagickBin,ffmpegBin,sep001,fileSort,fileExt,fileThumb",
+				"{{LNG['fileThumb.video.title']}}":"videoConvertDesc,videoConvert,videoConvertLimit,videoConvertLimitTo,videoConvertTask,videoConvertType,sep003,videoPlayType"
+			}
+		},
+		"pluginAuth":{
+			"type":"userSelect",
+			"value":{"all":1},
+			"display":"{{LNG['admin.plugin.auth']}}",
+			"desc":"{{LNG['admin.plugin.authDesc']}}",
+			"require":1
+		},
+		"imagickBin":{
+			"type":"input",
+			"value":"convert",
+			"display":"imageMagick {{LNG['explorer.file.path']}}",
+			"require":1,
+			"desc":"psd,ttf,ps,gta {{LNG['fileThumb.config.use']}}"
+		},
+		"ffmpegBin":{
+			"type":"input",
+			"value":"ffmpeg",
+			"display":"ffmpegBin {{LNG['explorer.file.path']}}",
+			"require":1,
+			"desc":"ps,ai,pdf {{LNG['fileThumb.config.use']}}<br/><br/>
+					<button class='btn btn-success check-psd-server mr-10'>{{LNG['fileThumb.config.test']}}</button>
+					<button class='btn btn-default convert-stop-all mr-10'>Stop All</button>
+					<button class='btn btn-link check-psd-help' >{{LNG['fileThumb.config.help']}}</button>"
+		},
+
+		"sep001":"<h4>{{LNG['fileThumb.config.file']}}:</h4>",
+		"fileSort":{
+			"type":"number",
+			"display":"{{LNG['admin.plugin.fileSort']}}",
+			"desc":"{{LNG['admin.plugin.fileSortDesc']}}",
+			"value":100
+		},
+		"fileExt":{
+			"type":"tags",
+			"display":"{{LNG['admin.plugin.fileExt']}}",
+			"desc":"{{LNG['admin.plugin.fileExtDesc']}}",
+			//raw,rw2,srw,dcm
+			"value":"psd,psb,ps,ps2,ps3,tif,tiff,tga,tst,plt,ai,jpe,dds,crw,3fr,fff,ppm,mef,mos,mdc,iiq,eps,heic,ttf"
+		},
+		"fileThumb":{
+			"type":"tags",
+			"display":"{{LNG['fileThumb.Config.fileThumbExt']}}",
+			"value":"psd,psb,ps,ps2,ps3,tif,tiff,tga,tst,plt,ai,jpe,dds,crw,3fr,fff,ppm,mef,mos,mdc,iiq,eps,
+			,pdf,xps,heic,ttf,
+			,3gp,avi,mp4,m4v,mov,mpg,mpeg,mpe,mts,m2ts,wmv,ogv,webm,vob,flv,f4v,mkv,rmvb,rm"
+		},
+		
+		"videoConvertDesc":"<h4>{{LNG['fileThumb.video.title']}}</h4>
+		<div class='info-alert info-alert-blue mt-10'>{{LNG['fileThumb.config.convertTips']}}</div>",
+		"videoConvert":{
+			"type":"switch",
+			"value":"0",
+			"display":"{{LNG['fileThumb.config.videoOpen']}}",
+			"desc":"{{LNG['fileThumb.config.videoOpenDesc']}}",
+			"switchItem":{"1":"videoConvertLimit,videoConvertLimitTo,videoConvertTask,videoConvertType,sep003,videoPlayType"}
+		},
+		"videoConvertLimit":{
+			"type":"number",
+			"value":"50","titleRight":"MB",
+			"display":"{{LNG['fileThumb.config.videoSizeLimit']}}",
+			"desc":"{{LNG['fileThumb.config.videoSizeLimitDesc']}}"
+		},
+		"videoConvertLimitTo":{
+			"type":"number",
+			"value":"10","titleRight":"GB",
+			"display":"{{LNG['fileThumb.config.videoSizeLimitTo']}}",
+			"desc":"{{LNG['fileThumb.config.videoSizeLimitToDesc']}}"
+		},
+		"videoConvertTask":{
+			"type":"number",
+			"value":"5",
+			"display":"{{LNG['fileThumb.config.videoTaskLimit']}}",
+			"desc":"{{LNG['fileThumb.config.videoTaskLimitDesc']}}"
+		},
+		"videoConvertType":{
+			"type":"tags",
+			"value":"3gp,avi,mp4,m4v,mov,mpg,mpeg,mpe,mts,m2ts,wmv,ogv,webm,vob,flv,f4v,mkv,rmvb,rm",
+			"display":"{{LNG['fileThumb.config.videoTypeLimit']}}",
+			"desc":"{{LNG['fileThumb.config.videoTypeLimitDesc']}}"
+		},
+		
+		"sep003":"<hr/>",
+		"videoPlayType":{
+			"type":"segment",
+			"value":"normal",
+			"display":"{{LNG['fileThumb.config.playType']}}",
+			"info":{
+				"normal":"{{LNG['fileThumb.video.normal']}}",
+				"before":"{{LNG['fileThumb.video.before']}}",
+			},
+			"desc":"{{LNG['fileThumb.config.playTypeDesc']}}"
+		},
+	}
+}

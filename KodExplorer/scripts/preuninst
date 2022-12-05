@@ -1,0 +1,17 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+. "$(dirname "$0")"/common
+
+# empty
+CustomPreuninst
+
+if [ "$SYNOPKG_PKG_STATUS" = "UNINSTALL" ]; then
+	rm -rf "$(GetBackupPath)"
+	CustomRemove
+	CustomBackupData
+	echo "path=$(GetBackupPath)" >> "$INFO_FILE"
+	echo "version=$SYNOPKG_PKGVER" >> "$INFO_FILE"
+fi
+
+exit 0

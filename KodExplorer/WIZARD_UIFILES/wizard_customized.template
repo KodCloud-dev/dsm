@@ -1,0 +1,27 @@
+#!/bin/bash
+# This file is just a sample/template for new packages adopting syno-webpkg-utils, not for packing
+
+PKG_NAME=""
+PKG_DIR=""
+WEBSITE_ROOT=""
+CONF_FILE=""
+MIGRATE_VERSION=""
+INIT_DB_NAME=""
+INIT_DB_USER=""
+INFO_FILE="/usr/syno/etc/packages/$PKG_NAME/$PKG_DIR.conf"
+
+CustomHasRunWebsiteSetup()
+{
+	local path="$1"
+	if [ -s "$path/$INST_FILE" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+InitBackupPath()
+{
+	BACKUP_PATH="$(GetBackupPath)"
+	BACKUP_WEB_PATH="$(GetBackupWebDir)"
+}

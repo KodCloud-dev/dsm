@@ -1,0 +1,54 @@
+{
+    "webservice": {
+        "services": [{
+            "service": "kodexplorer",
+            "display_name": "KodExplorer",
+            "support_alias": true,
+            "support_server": true,
+            "type": "apache_php",
+            "root": "kodexplorer",
+            "backend": 2,
+            "icon": "ui/kodexplorer_{0}.png",
+            "php": {
+                "profile_name": "KodExplorer Profile",
+                "profile_desc": "PHP Profile for KodExplorer",
+                "backend": 8,
+                "open_basedir": "/var/services/web_packages/kodexplorer:/tmp:/var/services/tmp",
+                "extensions": [
+                    "curl",
+                    "gd",
+                    "iconv"
+                ],
+                "php_settings": {
+                    "display_errors": "1",
+                    "error_reporting": "E_ALL",
+                    "log_errors": "true",
+                    "post_max_size": "512M",
+                    "upload_max_filesize": "512M",
+                    "memory_limit": "512M",
+                    "max_execution_time": "3600",
+                    "max_input_time": "3600"
+                },
+                "user": "KodExplorer",
+                "group": "http"
+            },
+            "connect_timeout": 60,
+            "read_timeout": 3600,
+            "send_timeout": 3600
+        }],
+        "portals": [{
+            "service": "kodexplorer",
+            "type": "alias",
+            "name": "KodExplorer",
+            "alias": "kodexplorer",
+            "app": "SYNO.SDS.KodExplorer"
+        }],
+        "pkg_dir_prepare": [{
+            "source": "/var/packages/KodExplorer/target/web",
+            "target": "kodexplorer",
+            "mode": "0755",
+            "user": "KodExplorer",
+            "group": "http"
+        }]
+    }
+}

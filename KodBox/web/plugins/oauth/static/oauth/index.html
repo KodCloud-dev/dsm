@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+
+<head>
+	<title><?php echo LNG('oauth.main.pageTitle');?></title>
+	<meta charset="utf-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="theme-color" content="#d89000">
+	<link rel="icon" href="./static/images/icon/fav.png">
+	<script>var kodSdkConfig = {api:'<?php echo APP_HOST;?>'};</script>
+	<?php $this->link('app/dist/sdk.js','static');?>
+	<?php $this->link('style/lib/font-icon/style.css','static');?>
+	<style>
+		body {width: 100%;height: 100%;position: fixed;top: 0;left: 0;bottom: 0;right: 0;margin:0px;padding:0px;}
+		body.is-not-wap{background: #fffcfc;}
+		body:after {
+			position: absolute;top: 0;right: 0;bottom: 0;left: 0;z-index: 100;
+			background: url("<?php echo STATIC_PATH.'images/common/loading-page.gif';?>");
+			margin: auto;width: 72px;height: 72px;
+			content: "";text-align: center;transition: all 0.5s;
+			background-color: #eee;background-size: 100% 100%;background-repeat: no-repeat;
+			border-radius: 8px;box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+		}
+		body.page-loaded:after {visibility: hidden;opacity: 0;}
+
+		body #app {height: 100%;display: -webkit-flex;justify-content: center;align-items: center;}
+		/* body .bind-box {text-align: center; margin-top: -100px;} */
+		body .bind-box {text-align: center;}
+		body.is-not-wap .bind-box {
+			width: 400px;
+			border: 1px solid #ededed;
+			border-radius: 4px;
+			padding: 140px 0px;
+			background: #fff;
+			margin-top: 0px;
+		}
+		body .bind-box .title {color: red;font-size: 16px;}
+		body .bind-box .msg {color: #747474;font-size: 13px;margin-bottom: 20px;}
+		/* body .bind-box img {width: 120px;height: 120px;} */
+		body .bind-box img {width: 100px;height: 100px;}
+		body .bind-box .img-box p {margin-top: 10px;font-size: 12px;color: #949494;}
+		body .bind-box .img-box .loading {margin-top: 150px;font-size: 14px;color: #949494;font-style: italic;}
+		body .bind-box .back-home{margin: 0px; font-size: 13px;display: none;}
+		body .bind-box .back-home a{text-decoration: none; color: #1890ff;}
+		@media (max-width: 560px) {
+			body.is-not-wap{background: #fff;}
+			body.is-not-wap .bind-box {
+				width: 100%;
+				border: none;
+				/* margin-top: -100px; */
+				padding: 0px;
+			}
+		}
+	</style>
+	<script>
+		var BASE_URL = "<?php echo $this->pluginHost.'static/';?>";
+		var STATIC_PATH = "<?php echo STATIC_PATH;?>";
+		var BASE_URL_API = "<?php echo $this->pluginApi;?>";
+	</script>
+</head>
+
+<body>
+	<div id="app">
+		<div class="bind-box">
+			<p class="title"></p>
+			<p class="msg"></p>
+			<div class="img-box">
+				<div class="loading">Loading...</div>
+			</div>
+			<p class="back-home"><a href="./"><?php echo LNG('oauth.main.backHome');?></a></p>
+		</div>
+	</div>
+
+	<script>
+		$(function () {
+			// 获取当前url参数
+			var getUrlParams = function () {
+				var data = {};
+				var query = window.location.search.substring(1).split('&');	// 先解码导致data参数（{}）异常
+				for(var i in query) {
+					var item = query[i];
+					var idx = item.indexOf('=');
+					if (idx > 0) {
+						var key	  = item.slice(0, idx);
+						var value = item.slice(idx + 1);
+						data[key] = urlDecode(value);
+					}
+				}
+				return data;
+			}
+			// 解析bindApi页面返回数据
+			var bindData = function (result) {
+				if (!result.code) {
+					return {
+						title:	'An error occurred',
+						avatar:	BASE_URL + 'images/error.png',
+						msg:	result.data,
+						desc:	'',
+					}
+				}
+				if (!result.data.success) {
+					result.data.avatar = BASE_URL + 'images/error.png';
+				}
+				var msgArr = result.data.msg.split(";");
+				result.data.msg = msgArr[0];
+				result.data.desc = msgArr[1] || '';
+				return result.data;
+			}
+			// 页面跳转
+			var bindAfter = function (type, url, client = false, bind = false) {
+				var time = type != 'weixin' ? 3000 : 1000;
+				if (client && bind) {
+					return setTimeout(function () {
+						window.parent.location.href = url;
+					}, time);
+				}
+				if (type != 'weixin') {
+					return setTimeout(function () { location.href = url; }, time);
+				}
+				if (client) {
+					window.parent.location.href = url;
+				} else {
+					if (!window.parent.artDialog.list["bindlogin"]) {
+						return setTimeout(function () { location.href = url; }, time);
+					}
+					window.parent.location.reload();
+				}
+				return setTimeout(function () {
+					window.parent.artDialog.list["bindlogin"].close();
+				}, time);
+			}
+			// ajax请求回调
+			var ajaxAfter = function(result){
+				// 1.页面信息
+				$('body').addClass('page-loaded'+(!$.isWap ? ' is-not-wap' : ''));
+
+				var data = bindData(result);
+				$(".bind-box .title").text(data.title);
+				$(".bind-box .msg").text(data.msg);
+				var $box = $(".bind-box .img-box").html('<img src=""><p></p>');
+				$box.find('img').attr({src: data.avatar});
+				$box.find('p').text(data.desc);
+				if (result.code && result.data.success) {
+					$(".bind-box img").attr({onerror: 'this.src="'+STATIC_PATH+'images/common/default-avata.png'+'"'}).css('border-radius', '60px');
+					$(".bind-box img").next('p').html(htmlEncode(data.name));
+				}
+
+				// 2.页面跳转
+				var data = result.data;
+				// 绑定异常时不自动跳转
+				if (!data.success) {
+					if (data.type != 'weixin') {
+						var hash = data.client ? './' : './#setting/user/account';
+						$(".bind-box .back-home a").attr('href', hash);
+						$(".bind-box .back-home").show();
+					}
+					return false;	// weixin弹窗保持
+				}
+				// 后端
+				if (!data.client) {
+					var url = './#setting/user/account';
+					return bindAfter(data.type, url);
+				}
+				// 前端-已绑定（进入主页面）
+				bindAfter(data.type, './', true, data.bind);
+			}
+
+			// 回调请求
+			$.ajax({
+				url: BASE_URL_API + 'bind&method=bindApi',
+				data: getUrlParams(),
+				dataType: 'json',
+				success: function (result) {
+					ajaxAfter(result);
+				},
+				error: function(xhr,status,error){
+					var result = {code: false, data: error};
+					ajaxAfter(result);
+				}
+			});
+		})
+	</script>
+</body>
+
+</html>

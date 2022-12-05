@@ -1,0 +1,45 @@
+{
+	"id":"oauth",
+	"name":"{{LNG['oauth.meta.name']}}",
+	"title":"{{LNG['oauth.meta.title']}}",
+	"version":"1.08",
+	"category":"tools,others",
+	"source":{
+		"className":"font-icon ri-shield-user-line bg-blue-6"
+	},
+	"description":"{{LNG['oauth.meta.desc']}}",
+	"auther":{
+		"copyright":"kodcloud.",
+		"homePage":"http://www.kodcloud.com"
+	},
+	"meta": {
+		"needNetwork": 1
+	},
+	"networkDesc": "{{LNG['oauth.meta.netwrokDesc']}}",
+	"configItem":{
+		"pluginAuth":{
+			"type":"userSelect",
+			"value":{"all":1},
+			"display":"{{LNG['admin.plugin.auth']}}",
+			"desc":"{{LNG['admin.plugin.authDesc']}}",
+			"className":"hidden",
+			"require":1
+		},
+		"desc":{
+			"type":"html",
+			"value":"{{LNG['oauth.meta.desc']}}",
+			"display":"{{LNG['admin.setting.recDesc']}}"
+		},
+		"sep001":"<hr>",
+		"list":{
+			"type":"html",
+			"value":"",
+			"display":"{{LNG['oauth.config.type']}}"
+		},
+		"loginWith":{
+			"type": "input",
+			"className": "hidden",
+			"value": "qq,weixin"
+		}
+	}
+}

@@ -1,6 +1,0 @@
-#!/bin/sh
-WEBSITE_ROOT="/var/services/web_packages/kodexplorer"
-
-chown -R KodExplorer:http "$WEBSITE_ROOT/*"
-
-exit 0

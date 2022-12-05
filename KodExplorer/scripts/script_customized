@@ -1,0 +1,56 @@
+#!/bin/bash
+# Copyright (c) 2015-2022 KodCloud Inc. All rights reserved.
+
+WriteBackupInfo() {
+	echo "path=$(GetBackupPath)" > "$INFO_FILE"
+	echo "version=$SYNOPKG_OLD_PKGVER" >> "$INFO_FILE"
+}
+
+CustomBackupData()
+{
+	local prev_website_root="$(GetWebsiteRootOfPreviousVersion)"
+
+	ClearBackupDir
+
+	local backup_web_dir="$(GetBackupWebDir)"
+	rm -rf "${prev_website_root}/data/User/*/data/temp/*"
+	cp -a "${prev_website_root}/." "${backup_web_dir}/"
+}
+
+CustomRestoreUpgrade()
+{
+	local backup_web_dir="$BACKUP_WEB_PATH"
+	if [ ! -e "$backup_web_dir" ]; then
+		backup_web_dir="$BACKUP_PATH/$PKG_DIR"
+	fi
+
+	local restore_item_list="$CONF_FILE config/define.php data plugins"
+	for item in $restore_item_list; do
+		if [ -e "$backup_web_dir/$item" ]; then
+			mkdir -p "${WEBSITE_ROOT}/$(dirname "$item")"
+			cp -arf "$backup_web_dir/$item" "${WEBSITE_ROOT}/$(dirname "$item")"
+	   fi
+	done
+}
+
+CustomMoveLegacyBackupWebDir()
+{
+	local src_backup_path="$1"
+	local web_dir=$(GetBackupWebDir)
+
+	# there was two backup folders for web content, merge them into one
+	mkdir -p "${web_dir}"
+	local backup_folders="$src_backup_path/$PKG_DIR $src_backup_path"
+	for backup_folder in $backup_folders; do
+		for item in `ls -A ${backup_folder}/ | grep -v "backup_web_dir"`; do
+			mv "${backup_folder}/${item}" "${web_dir}/"
+		done
+	done
+	rm -rf "${web_dir}/${PKG_DIR}";
+}
+
+CustomSetInit()
+{
+
+}
+

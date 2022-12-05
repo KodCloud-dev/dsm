@@ -1,0 +1,13 @@
+#!/bin/bash
+# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+
+. "$(dirname "$0")"/common
+
+if IsPreviousVersionBelowDSM7 && [ -e "$WEBSITE_ROOT" ]; then
+	echo "$wizard_website_root_exist_2" >> "$SYNOPKG_TEMP_LOGFILE"
+	exit 1
+fi
+# empty
+CustomPreupgrade
+
+exit 0

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+. "$(dirname "$0")"/common
+
+StartDaemons()
+{
+	CustomStart
+	if [ ! -d "$WEBSITE_ROOT" ]; then
+		echo "web_packages/$PKG_DIR not found." > "$SYNOPKG_TEMP_LOGFILE"
+		exit 150
+	fi
+}
+
+StopDaemons()
+{
+	CustomStop
+}
+
+case "$1" in
+	start)
+		StartDaemons
+		;;
+	stop)
+		StopDaemons
+		;;
+	status)
+		if [ ! -d "$WEBSITE_ROOT" ]; then
+			exit 150
+		fi
+		exit 0
+		;;
+	log)
+		echo ""
+		;;
+	*)
+		echo "Usage: $0 {start|stop|status}" >&2
+		exit 1
+		;;
+esac
+exit 0
+
