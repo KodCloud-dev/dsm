@@ -188,17 +188,7 @@ GetLegacyBackupDataPrefix()
 # because functions in wizard steps will be merged after calling MainCreate.
 CustomSetPages()
 {
-	if $REQUIRE_DB_SETUP; then
-		NEW_INSTALL_PAGES="$(PageM10),$(PageDB)"
-		RESTORE_PAGES="$(PageRestore),$(PageM10),$(PageDB)"
-		MIGRATE_PAGES="$(PageM5),$(PageRestore),$(PageM10),$(PageDB)"
-		UNINSTALL_PAGES="$(PageUninstDB)"
-	else
-		NEW_INSTALL_PAGES=""
-		RESTORE_PAGES="$(PageRestore)"
-		MIGRATE_PAGES="$(PageRestore)"
-		UNINSTALL_PAGES=""
-	fi
+    :
 }
 
 CustomParseDBConf()

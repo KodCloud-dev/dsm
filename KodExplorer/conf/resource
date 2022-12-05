@@ -15,10 +15,18 @@
                 "backend": 8,
                 "open_basedir": "/var/services/web_packages/kodexplorer:/tmp:/var/services/tmp",
                 "extensions": [
+                    "bz2",
                     "curl",
+                    "exif",
                     "gd",
-                    "iconv"
-                ],
+                    "gettext",
+                    "iconv",
+                    "imagick",
+                    "intl",
+                    "openssl",
+                    "zip",
+                    "zlib"
+                 ],
                 "php_settings": {
                     "display_errors": "1",
                     "error_reporting": "E_ALL",

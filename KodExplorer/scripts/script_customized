@@ -51,6 +51,6 @@ CustomMoveLegacyBackupWebDir()
 
 CustomSetInit()
 {
-
+    :
 }
 

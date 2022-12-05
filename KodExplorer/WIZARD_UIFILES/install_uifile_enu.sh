@@ -259,7 +259,6 @@ SetupInstallWizardPages()
 main()
 {
 	SetupInstallVariables
-	SetupInstallWizardPages
 	return 0
 }
 

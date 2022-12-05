@@ -9,7 +9,7 @@ INST_FILE="data/system/install.lock"
 
 CustomMainInstall()
 {
-
+    :
 }
 
 UnQuotePHP()

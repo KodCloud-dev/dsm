@@ -191,7 +191,7 @@ GetLegacyBackupDataPrefix()
 # because functions in wizard steps will be merged after calling MainCreate.
 CustomSetPages()
 {
-
+    :
 }
 
 CustomParseDBConf()
