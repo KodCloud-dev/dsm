@@ -1,17 +1,11 @@
 #!/bin/bash
 
-# define main function
-MAIN_INSTALL="main_install"
-MAIN_UPGRADE="main_upgrade"
-MAIN_UNINST="main_uninst"
-DEFAULT="enu"
-# set out file name
-OUTPUT_INSTALL="install_uifile"
-OUTPUT_UPGRADE="upgrade_uifile"
-OUTPUT_UNINST="uninstall_uifile"
-INIT_DB_NAME="" # need to be overwritten
-INIT_DB_USER="" # need to be overwritten
-INFO_FILE="" # need to be overwritten
+PKG_NAME="KodExplorer"
+PKG_DIR="kodexplorer"
+WEBSITE_ROOT="/var/services/web_packages/$PKG_DIR"
+INFO_FILE="/usr/syno/etc/packages/$PKG_NAME/$PKG_DIR.conf"
+CONF_FILE="config/setting_user.php"
+INST_FILE="data/system/install.lock"
 BACKUP_PATH="" # need to be overwritten
 BACKUP_WEB_PATH="" # need to be overwritten
 
@@ -64,7 +58,7 @@ NeedConfirmVirtualHost()
 CustomHasRunWebsiteSetup()
 {
 	local path="$1"
-	[ -s "$path/$INST_FILE" ]
+	[ -e "$path/$INST_FILE" ]
 }
 
 CustomWizCreate()
@@ -217,4 +211,3 @@ CustomGetDBPass()
 quote_json() {
 	sed -e 's|\\|\\\\|g' -e 's|\"|\\\"|g'
 }
-

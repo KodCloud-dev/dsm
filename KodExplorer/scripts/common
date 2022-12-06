@@ -1,9 +1,11 @@
 #!/bin/bash
-# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+# Copyright (c) 2015-2022 Kodcloud Inc. All rights reserved.
 
 . "$(dirname "$0")"/string_loader
 . "$(dirname "$0")"/../WIZARD_UIFILES/wizard_common
 . "$(dirname "$0")"/../WIZARD_UIFILES/wizard_customized
+BACKUP_PATH="$(GetBackupPath)"
+BACKUP_WEB_PATH="$(GetBackupWebDir)"
 
 CustomRemoveBackupConf()
 {

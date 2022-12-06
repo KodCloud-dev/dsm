@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2015-2022 KodCloud Inc. All rights reserved.
+# Copyright (c) 2015-2022 Kodcloud Inc. All rights reserved.
 
 WriteBackupInfo() {
 	echo "path=$(GetBackupPath)" > "$INFO_FILE"
