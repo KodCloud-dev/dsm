@@ -38,9 +38,6 @@ else
 	CustomNewInst
 fi
 
-# Set initial install setting values
-CustomSetInit
-
 CustomRemoveBackupConf
 
 exit 0

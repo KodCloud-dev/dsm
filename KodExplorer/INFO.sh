@@ -4,7 +4,7 @@
 package="KodExplorer"
 
 . "/pkgscripts-ng/include/pkg_util.sh" 
-version="4.50-2211" 
+version="4.50-2214" 
 os_min_ver="7.1-42440"
 startstop_restart_services="nginx.service" 
 instuninst_restart_services="nginx.service" 

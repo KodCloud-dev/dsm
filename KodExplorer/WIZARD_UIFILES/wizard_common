@@ -64,7 +64,7 @@ NeedConfirmVirtualHost()
 CustomHasRunWebsiteSetup()
 {
 	local path="$1"
-	[ -s "$path/$CONF_FILE" ]
+	[ -s "$path/$INST_FILE" ]
 }
 
 CustomWizCreate()
