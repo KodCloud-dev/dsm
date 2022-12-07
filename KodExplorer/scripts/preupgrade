@@ -10,4 +10,12 @@ fi
 # empty
 CustomPreupgrade
 
+if IsPreviousVersionBelow2212 ; then
+	rm -rf "$(GetBackupPath)"
+	CustomRemove
+	CustomBackupData
+	echo "path=$(GetBackupPath)" >> "$INFO_FILE"
+	echo "version=$SYNOPKG_PKGVER" >> "$INFO_FILE"
+fi
+
 exit 0

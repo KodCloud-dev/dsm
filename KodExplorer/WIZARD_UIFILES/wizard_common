@@ -107,6 +107,11 @@ IsPreviousVersionBelowDSM7()
 	[ "$(GetPreviousPkgBuildNumber)" -lt "2019" ]
 }
 
+IsPreviousVersionBelow2212()
+{
+	[ "$(GetPreviousPkgBuildNumber)" -lt "2212" ]
+}
+
 GetWebsiteRootOfPreviousVersion()
 {
 	local prev_website_root="$WEBSITE_ROOT"
