@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2015-2022 Kodcloud Inc. All rights reserved.
+# Copyright (c) 2015-2022 KodCloud Inc. All rights reserved.
 
 package="KodExplorer"
 
@@ -14,7 +14,7 @@ displayname="KodExplorer"
 displayname_enu="KodExplorer" 
 displayname_cht="可道雲KodExplorer"
 displayname_chs="可道云KodExplorer"
-maintainer="Kodcloud"
+maintainer="KodCloud"
 thirdparty="yes"
 silent_upgrade="yes"
 arch="noarch"

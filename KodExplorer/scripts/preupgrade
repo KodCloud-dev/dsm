@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2000-2017 Synology Inc. All rights reserved.
+# Copyright (c) 2015-2022 KodCloud Inc. All rights reserved.
 
 . "$(dirname "$0")"/common
 

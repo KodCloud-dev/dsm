@@ -47,7 +47,7 @@
         "portals": [{
             "service": "kodexplorer",
             "type": "alias",
-            "name": "KodExplorer",
+            "name": "kodexplorer",
             "alias": "kodexplorer",
             "app": "SYNO.SDS.KodExplorer"
         }],
