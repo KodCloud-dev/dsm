@@ -90,6 +90,7 @@ class explorerUserShare extends Controller{
 				$notExist[] = $shareItem['shareID'];
 				continue;
 			}
+			$info['sharePath'] = KodIO::makeShare($shareItem['shareID'],$info['sourceID']);
 			$info['shareInfo'] = $shareItem;
 			$key = $info['type'] == 'folder' ? 'folderList':'fileList';
 			$this->shareTarget($info,$shareItem);
@@ -341,12 +342,18 @@ class explorerUserShare extends Controller{
 		}
 		$source['path'] = KodIO::makeShare($share['shareID'],$pathAdd);
 		$source['path'] = KodIO::clear($source['path']);
+		
+		if($source['auth'] && $share['sourceID'] != '0'){
+			$listData = array($source);
+			Model('Source')->_listAppendAuthSecret($listData);
+			$source = $listData[0];
+		}
 
 		// 分享者名字;
 		$userName = $user['nickName'] ? $user['nickName']:$user['name'];
 		$displayUser = '['.$userName.']'.LNG('common.share').'-'.$sourceRoot['name'];
 		if($share['userID'] == USER_ID){
-			$displayUser = '['.LNG('explorer.toolbar.myShare').']-'.$sourceRoot['name'];
+			$displayUser = $sourceRoot['name'];
 			$source['sourceInfo']['selfShareInfo'] = $sourceRoot;
 		}
 		if($sourceRoot['targetType'] == 'group'){
