@@ -13,5 +13,4 @@ $config['database'] = array (
 );
 $config['cache']['sessionType'] = 'file';
 $config['cache']['cacheType'] = 'file';
-
 $config['settings']['updloadChunkSize'] = 1024*1024*5;

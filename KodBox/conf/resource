@@ -30,6 +30,7 @@
                   "openssl",
                   "pdo_mysql",
                   "pdo_sqlite",
+                  "redis",
                   "sockets",
                   "sqlite3",
                   "zip",

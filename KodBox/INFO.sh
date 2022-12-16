@@ -4,7 +4,7 @@
 package="KodBox"
 
 . "/pkgscripts-ng/include/pkg_util.sh" 
-version="1.35-2213" 
+version="1.36-2212" 
 os_min_ver="7.1-42440"
 startstop_restart_services="nginx.service" 
 instuninst_restart_services="nginx.service" 
