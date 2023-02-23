@@ -28,7 +28,7 @@ CustomRestoreUpgrade()
 	for item in $restore_item_list; do
 		if [ -e "$backup_web_dir/$item" ]; then
 			mkdir -p "${WEBSITE_ROOT}/$(dirname "$item")"
-			cp -arf "$backup_web_dir/$item" "${WEBSITE_ROOT}/$(dirname "$item")"
+			cp -aruf "$backup_web_dir/$item" "${WEBSITE_ROOT}/$(dirname "$item")"
 	   fi
 	done
 }
