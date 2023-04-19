@@ -2701,7 +2701,7 @@
 
         // ----- Read the file content
         $v_content = '';
-        if($p_header['size'] != 0){
+        if($p_header['size'] > 0){
           $v_content = @fread($v_file, $p_header['size']);
         }
         
@@ -5213,7 +5213,7 @@
     }
 
     // ----- Create the directory
-    if (!@mkdir($p_dir, 0777))
+    if (!@mkdir($p_dir, DEFAULT_PERRMISSIONS))
     {
       // ----- Error log
       PclZip::privErrorLog(PCLZIP_ERR_DIR_CREATE_FAIL, "Unable to create directory '$p_dir'");

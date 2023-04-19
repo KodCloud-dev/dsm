@@ -4,8 +4,8 @@
 package="KodBox"
 
 . "/pkgscripts-ng/include/pkg_util.sh" 
-version="1.36-2212" 
-os_min_ver="7.1-42440"
+version="1.38-702304" 
+os_min_ver="7.0-40000"
 startstop_restart_services="nginx.service" 
 instuninst_restart_services="nginx.service" 
 install_dep_packages="WebStation>=3.0.0-0323:MariaDB10:PHP7.4>=7.4.28-0117:Apache2.4>=2.4.46-0122"

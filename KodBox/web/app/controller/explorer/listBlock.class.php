@@ -47,19 +47,21 @@ class explorerListBlock extends Controller{
 			$block = array_merge($item,array(
 				"path"		=> '{block:'.$type.'}/',
 				"isParent"	=> true,
-				"children"	=> $this->blockChildren($type),
 			));
-			if($block['children'] === false) continue;
+			if($block['open']){
+				$block['children'] = $this->blockChildren($type);
+				if($block['children'] === false) continue;
+			} // 必须有children,没有children的去除(兼容Android <= 2.15)
 			$result[] = $block;
 		}
 		return $result;
 	}
 	public function blockItems(){
 		$list = array(
-			'files'		=> array('name'=>LNG('common.position'),'open'=>true),
-			'tools'		=> array('name'=>LNG('common.tools'),'open'=>true,'children'=>true),
-			'fileType'	=> array('name'=>LNG('common.fileType'),'open'=>false,'children'=>true,'pathDesc'=> LNG('explorer.pathDesc.fileType')),
-			'fileTag'	=> array('name'=>LNG('common.tag'),'open'=>false,'children'=>true,'pathDesc'=> LNG('explorer.pathDesc.tag')),
+			'files'		=> array('name'=>LNG('common.position'),'open'=>true), 
+			'tools'		=> array('name'=>LNG('common.tools'),'open'=>true),
+			'fileType'	=> array('name'=>LNG('common.fileType'),'open'=>true,'pathDesc'=> LNG('explorer.pathDesc.fileType')),
+			'fileTag'	=> array('name'=>LNG('common.tag'),'open'=>true,'pathDesc'=> LNG('explorer.pathDesc.tag')),
 			'driver'	=> array('name'=>LNG('common.mount').' (admin)','open'=>false,'pathDesc'=> LNG('explorer.pathDesc.mount')),
 		);
 		return $list;
@@ -67,7 +69,7 @@ class explorerListBlock extends Controller{
 	
 	private function groupRoot(){
 		$groupArray = Action('filter.userGroup')->userGroupRoot();
-	    if (empty($groupArray[0]) || count($groupArray) != 1) return false;
+	    if (!$groupArray || empty($groupArray[0])) return false;
 	    return Model('Group')->getInfo($groupArray[0]);
 	}
 	
@@ -98,7 +100,7 @@ class explorerListBlock extends Controller{
 		
 		if(!$this->pathEnable('myFav')){unset($list['fav']);}
 		if(!$this->pathEnable('my')){unset($list['my']);}
-		if(!$this->pathEnable('rootGroup') || !$groupInfo){unset($list['rootGroup']);}
+		if(!$this->pathEnable('rootGroup') || !$groupInfo || !$groupInfo['sourceInfo']){unset($list['rootGroup']);}
 		if(!$this->pathEnable('myGroup')){unset($list['myGroup']);}
 		
 		// 根部门没有权限,且没有子内容时不显示;
@@ -132,7 +134,7 @@ class explorerListBlock extends Controller{
 		return $result;
 	}
 	
-	private function pathEnable($type){
+	public function pathEnable($type){
 		$model  = Model('SystemOption');
 		$option = $model->get();
 		if( !isset($option['treeOpen']) ) return true;

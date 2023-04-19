@@ -73,7 +73,7 @@ class webdavServer {
 		return file_exists($path);
 	}
 	public function pathMkdir($path){
-		return mkdir($path,0777,true);
+		return mkdir($path,DEFAULT_PERRMISSIONS,true);
 	}
 	public function pathInfo($path){
 		return path_info($path);
@@ -352,6 +352,7 @@ class webdavServer {
         return array('code' => $res?200:503);
 	}
 	public function httpLOCK() {
+		$this->fileLock($this->path);
 		$token = md5($this->path);
 		$lockInfo = '<D:prop xmlns:d="DAV:">
 			<D:lockdiscovery>
@@ -375,8 +376,11 @@ class webdavServer {
         );
 	}
 	public function httpUNLOCK() {
+		$this->fileUnLock($this->path);
 		return array('code' => 204);
 	}
+	public function fileLock($path){}
+	public function fileUnLock($path){}
 
 	public function xmlGet($key){
 		static $xml = false;

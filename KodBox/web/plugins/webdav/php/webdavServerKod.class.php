@@ -24,6 +24,10 @@ class webdavServerKod extends webdavServer {
 		if($method == 'httpOPTIONS'){
 			return self::response($this->httpOPTIONS());
 		}
+		if($method == 'httpHEAD'){ // win10,office打开异常情况处理;不校验权限;
+			return self::response($this->httpHEAD());
+		}
+		
 		$this->checkUser();
 		$this->initPath($this->davPre);
 		$result = $this->$method();
@@ -238,9 +242,9 @@ class webdavServerKod extends webdavServer {
 		return Action('explorer.list')->path($path);
 	}
 	
-	public function pathMkdir($path){
-		$path = $this->pathCreateParent($path);
-		if(!$this->can($path,'edit')) return false;
+	public function pathMkdir($pathBefore){
+		$path = $this->pathCreateParent($pathBefore);
+		if(!$path || !$this->can($path,'edit')) return false;
 		return IO::mkdir($path);
 	}
 	public function pathOut($path){
@@ -272,12 +276,15 @@ class webdavServerKod extends webdavServer {
 	private function pathCreateParent($path){
 		if($path) return $path;
 		$inPath  = $this->pathGet();
-		return rtrim($this->parsePath(IO::pathFather($inPath)),'/').'/'.IO::pathThis($inPath);
+		if(IO::pathFather($inPath) == '.recycle') return false;
+		$pathFather = rtrim($this->parsePath(IO::pathFather($inPath)),'/');
+		return $pathFather.'/'.IO::pathThis($inPath);
 	}
 	
 	public function pathPut($path,$localFile=''){
 		$pathBefore = $path;
 		$path = $this->pathCreateParent($path);
+		if(!$path || !$this->can($path,'edit')) return false;
 		$name = IO::pathThis($this->pathGet());
 		$info = IO::infoFull($path);
 		if($info){	// 文件已存在; 则使用文件父目录追加文件名;
@@ -285,7 +292,6 @@ class webdavServerKod extends webdavServer {
 		}else{// 首次请求创建,文件不存在; 则使用{source:xx}/newfile.txt;
 			$uploadPath = $path;
 		}
-		if(!$this->can($path,'edit')) return false;
 		$this->pathPutCheckKod($uploadPath);
 
 		// 传入了文件; wscp等直接一次上传处理的情况;  windows/mac等会调用锁定,解锁,判断是否存在等之后再上传;
@@ -430,5 +436,23 @@ class webdavServerKod extends webdavServer {
 		if(!$this->can($path,'download')) return false;
 		if(!$this->can($dest,'edit')) return false;
 		return IO::copy($path,$dest);
+	}
+	
+	// 文件编辑锁添加或移除;(office/wps: 打开编辑时会添加; 保存时会添加/解除; 关闭文件时会解锁)
+	public function fileLock($path){
+		$info = $this->fileLockCheck($path);if(!$info) return;
+		Model("Source")->metaSet($info['sourceID'],'systemLock',USER_ID);
+		Model("Source")->metaSet($info['sourceID'],'systemLockTime',time());		
+	}
+	public function fileUnLock($path){
+		$info = $this->fileLockCheck($path);if(!$info) return;
+		Model("Source")->metaSet($info['sourceID'],'systemLock',null);
+		Model("Source")->metaSet($info['sourceID'],'systemLockTime',null);
+	}
+	private function fileLockCheck($path){
+		$info = IO::infoFull($path);
+		if(!$info || !$info['sourceID'] || !defined('USER_ID')) return;
+		if(!$this->can($path,'edit')) return;
+		return $info;
 	}
 }

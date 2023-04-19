@@ -120,6 +120,8 @@ class userView extends Controller{
 		http_close();
 		Action('explorer.index')->clearCache();
 		Action('explorer.attachment')->clearCache();
+		Action("admin.repair")->sourceNameInit();
+		
 		AutoTask::start();
 		Cache::clearTimeout();
 	}
@@ -131,6 +133,9 @@ class userView extends Controller{
 			$link = substr($link,2);
 		}
 		return APP_HOST . $link;
+	}
+	public function imageRequest(){
+		Action('user.viewImage')->request('start');
 	}
 	
 	

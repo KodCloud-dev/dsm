@@ -458,6 +458,49 @@ class adminRepair extends Controller {
 		echoLog($taskType.'，total: '.$total.'; error: '.$errorNum.'; t='.(timeFloat() - $timeStart).'s');
 		$task->end();
 	}
+	
+	// 文件列表自然排序,文件名处理; 升级向下兼容数据处理;
+	public function sourceNameInit(){
+		// Model("SystemOption")->set('sourceNameSortFlag','');
+		if(Model("SystemOption")->get('sourceNameSortFlag')) return;
+		$this->sourceNameSort();
+	}
+	public function sourceNameSort(){
+		Model("SystemOption")->set('sourceNameSortFlag','1');
+		$taskType ='sourceNameSort';
+		$model = Model('Source');$modelMeta = Model("io_source_meta");
+		$pageNum = $this->pageCount;$page = 1;$errorNum = 0;
+		$model->selectPageReset();
+		$list = $model->field('sourceID,name')->selectPage($pageNum,$page);
+		
+		$task = new Task($taskType,'',$list['pageInfo']['totalNum']);
+		$index = 0;$total = $list['pageInfo']['totalNum'];
+		while($list && $page <= $list['pageInfo']['pageTotal']){
+			$metaAdd = array();
+			foreach ($list['list'] as $item){
+				$index++;
+				if(!$item['name']) continue;
+				$metaAdd[] = array(
+					'sourceID' 	=> $item['sourceID'],
+					'key'		=> 'nameSort',
+					'value'		=> KodSort::makeStr($item['name']),
+				);
+				$task->update(1);
+				echoLog($index.'/'.$total, true);
+				if(count($metaAdd) >= 1000){
+					$modelMeta->addAll($metaAdd,array(),true);$metaAdd = array();
+				}
+			}
+			if(count($metaAdd) > 0){
+				$modelMeta->addAll($metaAdd,array(),true);$metaAdd = array();
+			}
+			$page ++;
+			$list = $model->field('sourceID,name')->selectPage($pageNum,$page);
+		}
+		Model("SystemOption")->set('sourceNameSortFlag','2');
+		$model->selectPageRestore();
+		$task->end();
+	}
 
 	/**
 	 * 根据sourceID彻底删除文件，sourceID可传多个，如sourceID=1,2,3
@@ -506,5 +549,12 @@ class adminRepair extends Controller {
 			Model('File')->where($where)->delete();
 		}
 		echoLog("删除完成！共删除source记录{$sCnt}条；file记录{$fCnt}条。");
+	}
+	
+	public function resetSize(){
+		$id = $this->in['sourceID'];
+		if(!$id) return;
+		model('Source')->folderSizeResetChildren($id);
+		echoLog("更新完成!");
 	}
 }

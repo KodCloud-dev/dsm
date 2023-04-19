@@ -33,7 +33,7 @@
                 if(value !== true) {
                     opt.check = 'fail';
                     opt.icons = 'error';
-                    opt.value = '<span title-timeout="100" title="sudo chmod -Rf 777 '+value+'">'+value+'</span>';
+                    opt.value = '<span title-timeout="100" title="sudo chmod -Rf 755 '+value+'">'+value+'</span>';
                 }
                 break;
             case 'php_version':
@@ -138,7 +138,7 @@
             _.each(errs, function(value, i){
                 errMsg.push((i+1)+'.'+$table.find("."+value+">span:eq(0)").text());
             });
-            Tips.tips(errMsg.join('<br/>'), false, 5000);
+            Tips.tips(errMsg.join('<br/>'), false, 3000);
         });
     }
 
