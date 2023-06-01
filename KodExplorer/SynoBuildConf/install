@@ -14,8 +14,6 @@ for dir in $INST_DIR $PKG_DIR $PKG_DEST; do
     mkdir -p "$dir" # use default mask
 done
 
-cp -av WIZARD_UIFILES $PKG_DIR
-
 make INSTALLDIR=$INST_DIR install
 make PACKAGEDIR=$PKG_DIR package
 

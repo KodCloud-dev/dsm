@@ -2,8 +2,8 @@
 # Copyright (c) 2015-2022 KodCloud Inc. All rights reserved.
 
 . "$(dirname "$0")"/string_loader
-. "$(dirname "$0")"/../WIZARD_UIFILES/wizard_common
-. "$(dirname "$0")"/../WIZARD_UIFILES/wizard_customized
+. "$(dirname "$0")"/custom_common
+
 BACKUP_PATH="$(GetBackupPath)"
 BACKUP_WEB_PATH="$(GetBackupWebDir)"
 

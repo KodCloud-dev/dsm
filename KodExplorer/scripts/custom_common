@@ -61,16 +61,6 @@ CustomHasRunWebsiteSetup()
 	[ -e "$path/$INST_FILE" ]
 }
 
-CustomWizCreate()
-{
-	:
-}
-
-CustomMainInstall()
-{
-	:
-}
-
 CustomGetValueFromMetaFile()
 {
 	local key="$1"
@@ -184,35 +174,4 @@ GetLegacyBackupDataPrefix()
 	fi
 
 	echo "$legacy_path"
-}
-
-# we define pages in fuction not in global variables,
-# because functions in wizard steps will be merged after calling MainCreate.
-CustomSetPages()
-{
-    :
-}
-
-CustomParseDBConf()
-{
-	:
-}
-
-CustomGetDBName()
-{
-	:
-}
-
-CustomGetDBUser()
-{
-	:
-}
-
-CustomGetDBPass()
-{
-	:
-}
-
-quote_json() {
-	sed -e 's|\\|\\\\|g' -e 's|\"|\\\"|g'
 }
