@@ -1,0 +1,4 @@
+# Copyright (c) 2000-2023 Kocloud Inc. All rights reserved.
+
+[app]
+kod_str_meta_desc        =       "KodExplorer is an open source blog publishing platform using PHP technology. This kit allows you to install KodExplorer network disks on Synology NAS."

@@ -1,0 +1,4 @@
+# Copyright (c) 2000-2023 Kocloud Inc. All rights reserved.
+
+[app]
+kod_str_meta_desc        =       "KodExplorer 是开放原始码 (open source) 的博客发布平台，采用的技术为 PHP 。此套件可让您在 Synology NAS 上架设 KodExplorer 网盘。"
