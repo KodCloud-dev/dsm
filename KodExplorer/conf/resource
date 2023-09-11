@@ -1,0 +1,11 @@
+{
+    "php73": {
+        "php-ini": [
+            {
+                "destpath": "/usr/local/etc/php73/conf.d",
+                "relpath": "KodExplorer.ini"
+            }
+        ]
+    },
+    "service-cfg": {}
+}

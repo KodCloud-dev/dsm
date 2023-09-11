@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress is an open source blog tool and publishing platform powered by PHP and MySQL. The package enables you to host a WordPress blog on your Synology NAS."
+
+[plugins]
+wp_ifps_name	=	"Insert image from Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>This plug-in requires version %s or later."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>This plug-in must be used with Photo Station."
+wp_ls_desc	=	"Select display language"
+wp_ls_name	=	"Language"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>This plugin requires version %s or later."
+wp_str_services_disabled	=	"The service is disabled now."
+
+[wizard]
+wizard_create_new	=	"Create new database (previously backed up data will be removed, including configuration files and database)"
+wizard_decide_restore	=	"Select one of the following actions:"
+wizard_found_backup	=	"Database exists for this package"
+wizard_restore	=	"Restore using the original database"
+wp_mysql_password_error	=	"Please check your MariaDB password and try again."
+wp_mysql_remove_fail	=	"However, you cannot delete the WordPress database due to the wrong password."
+wp_wizard_msql_password_desc	=	"Enter your MariaDB password"
+wp_wizard_msql_password_desc_remove	=	"Please provide root password to remove the WordPress database"
+wp_wizard_msql_password_label	=	"Root password"
+wp_wizard_msql_password_title	=	"Enter MariaDB password"
+wp_wizard_remove_msql_desc	=	"If you remove the WordPress database, all blog posts and comments will be deleted"
+wp_wizard_remove_msql_title	=	"Remove WordPress database"
+

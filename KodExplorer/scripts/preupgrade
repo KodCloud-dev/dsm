@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. "$(dirname "$0")"/common
+
+CustomPreupgrade
+exit 0

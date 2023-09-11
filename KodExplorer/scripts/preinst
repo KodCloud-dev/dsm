@@ -1,0 +1,12 @@
+#!/bin/sh
+. "$(dirname "$0")"/common
+
+[ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ] && exit 0
+
+CustomPreinst
+
+# Check existence of website root
+if [ -e "$WEBSITE_ROOT" ]; then
+	echo "$wizard_website_root_exist" >> "$SYNOPKG_TEMP_LOGFILE"
+	exit 1
+fi

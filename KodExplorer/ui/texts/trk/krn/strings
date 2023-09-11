@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress는 오픈 소스 블로그 도구이자 PHP 및 MySQL을 활용한 게시 플랫폼입니다. 이 패키지를 사용하여 Synology NAS에 WordPress 블로그를 게시할 수 있습니다."
+
+[plugins]
+wp_ifps_name	=	"Photo Station에서 이미지 삽입"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>이 플러그인에는 버전 %s 이상이 필요합니다."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>이 플러그인은 Photo Station에서 사용해야 합니다."
+wp_ls_desc	=	"표시 언어 선택"
+wp_ls_name	=	"언어"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>이 플러그인에는 버전 %s 이상이 필요합니다."
+wp_str_services_disabled	=	"이 서비스는 지금 사용할 수 없습니다."
+
+[wizard]
+wizard_create_new	=	"새 데이터베이스 생성(구성 파일 및 데이터베이스를 포함하여 이전에 백업된 데이터는 제거됩니다)"
+wizard_decide_restore	=	"다음 작업 중 하나를 선택하십시오:"
+wizard_found_backup	=	"이 패키지에 대한 데이터베이스 있음"
+wizard_restore	=	"원래 데이터베이스를 사용하여 복원"
+wp_mysql_password_error	=	"MariaDB 패스워드를 확인하고 다시 시도하십시오."
+wp_mysql_remove_fail	=	"그러나 패스워드가 잘못되어 WordPress 데이터베이스를 삭제할 수 없습니다."
+wp_wizard_msql_password_desc	=	"MariaDB 패스워드 입력"
+wp_wizard_msql_password_desc_remove	=	"WordPress 데이터베이스를 제거하려면 root 패스워드를 입력하십시오"
+wp_wizard_msql_password_label	=	"Root 패스워드"
+wp_wizard_msql_password_title	=	"MariaDB 패스워드 입력"
+wp_wizard_remove_msql_desc	=	"WordPress 데이터베이스를 제거하면 모든 블로그 게시물과 의견이 삭제됩니다"
+wp_wizard_remove_msql_title	=	"WordPress 데이터베이스 제거"
+

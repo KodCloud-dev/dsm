@@ -1,0 +1,7 @@
+
+# Copyright (c) 2000-2008 Synology Inc. All rights reserved.
+
+[app]
+app_name	=	"KodExplorer"
+description	=	"KodExplorer（可道云）是一个公开源码的基于Web的在线文件管理、代码编辑器。此套件可让您在 DiskStation 上快速完成私有云/私有网盘/在线文档管理系统的部署和搭建。"
+

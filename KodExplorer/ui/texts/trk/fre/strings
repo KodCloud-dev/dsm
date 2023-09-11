@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress est un outil open source de blog et une plateforme de publication à base de PHP et MySQL. Le programme vous permet d'héberger un blog WordPress sur votre Synology NAS."
+
+[plugins]
+wp_ifps_name	=	"Insérer une image de Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong> Ce plugin requiert la version %s ou ultérieur."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>Ce plugin doit être utilisé avec Photo Station."
+wp_ls_desc	=	"Sélectionnez la langue d’affichage"
+wp_ls_name	=	"Langue"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Ce plugin requiert la version %s ou ultérieure."
+wp_str_services_disabled	=	"Le service est désactivé."
+
+[wizard]
+wizard_create_new	=	"Créer une nouvelle base de données (les données précédemment sauvegardées seront supprimées, notamment les fichiers de configuration et la base de données)"
+wizard_decide_restore	=	"Sélectionnez l'une des actions suivantes :"
+wizard_found_backup	=	"La base de données existe pour ce paquet"
+wizard_restore	=	"Restaurer à l'aide de la base de donnée originale"
+wp_mysql_password_error	=	"Veuillez vérifier votre mot de passe MariaDB et réessayer."
+wp_mysql_remove_fail	=	"Cependant, vous ne pouvez pas supprimer la base de données WordPress en raison du mot de passe erroné."
+wp_wizard_msql_password_desc	=	"Saisissez votre mot de passé MariaDB"
+wp_wizard_msql_password_desc_remove	=	"Veuillez fournir le mot de passe root pour supprimer la base de données WordPress"
+wp_wizard_msql_password_label	=	"Mot de passe Root"
+wp_wizard_msql_password_title	=	"Saisissez le mot de passe MariaDB"
+wp_wizard_remove_msql_desc	=	"Si vous supprimez la base de données WordPress, tous les messages et commentaires du blog seront supprimés"
+wp_wizard_remove_msql_title	=	"Supprimez la base de données WordPress"
+

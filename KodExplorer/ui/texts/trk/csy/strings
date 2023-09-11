@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress je open source nástroj pro blogování a vydavatelská platforma na bázi PHP a MySQL. Tento balíček vám umožňuje hostit blog WordPress na vaší stanici Synology NAS."
+
+[plugins]
+wp_ifps_name	=	"Vložit obrázek ze stanice Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>Tento modul vyžaduje verzi %s nebo novější."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>Tento modul musí být používán se stanicí Photo Station."
+wp_ls_desc	=	"Vyberte jazyk zobrazení"
+wp_ls_name	=	"Jazyk"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Tento modul vyžaduje verzi %s nebo novější."
+wp_str_services_disabled	=	"Služba je nyní zakázána."
+
+[wizard]
+wizard_create_new	=	"Vytvořit novou databázi (dříve zálohovaná data budou odstraněna, včetně konfiguračních souborů a databáze)"
+wizard_decide_restore	=	"Vyberte jednu z následujících akcí:"
+wizard_found_backup	=	"Databáze pro tento balíček existuje"
+wizard_restore	=	"Obnovit pomocí původní databáze"
+wp_mysql_password_error	=	"Zkontrolujte heslo MariaDB a zkuste to znovu."
+wp_mysql_remove_fail	=	"Nemůžete však odstranit databázi WordPress kvůli špatnému heslu."
+wp_wizard_msql_password_desc	=	"Zadejte heslo MariaDB"
+wp_wizard_msql_password_desc_remove	=	"Zadejte heslo k root pro odstranění databáze WordPress"
+wp_wizard_msql_password_label	=	"Heslo root"
+wp_wizard_msql_password_title	=	"Zadejte heslo MariaDB"
+wp_wizard_remove_msql_desc	=	"Pokud odstraníte databázi WordPress, všechny blogové příspěvky a komentáře budou odstraněny"
+wp_wizard_remove_msql_title	=	"Odstranit databázi WordPress"
+

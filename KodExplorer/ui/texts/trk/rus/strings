@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress - это созданный на основе открытого исходного кода инструмент блогов и платформа для публикаций, написанный на языке PHP и использующий базы данных MySQL. Этот пакет позволяет разместить блок WordPress на вашем устройстве Synology NAS."
+
+[plugins]
+wp_ifps_name	=	"Вставить изображение из Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>Для данного плагина требуется версия %s или более поздняя."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>Данный плагин должен использоваться с Photo Station."
+wp_ls_desc	=	"Выберите язык отображения"
+wp_ls_name	=	"Язык"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Для данного плагина требуется версия %s или более поздняя."
+wp_str_services_disabled	=	"Теперь служба отключена."
+
+[wizard]
+wizard_create_new	=	"Создание новой базы данных (ранее резервируемые данные будут удалены, включая файлы конфигурации и базу данных)"
+wizard_decide_restore	=	"Выберите одно из следующих действий:"
+wizard_found_backup	=	"Для этого пакета существует база данных"
+wizard_restore	=	"Восстановление с использованием исходной базы данных"
+wp_mysql_password_error	=	"Проверьте пароль MariaDB и повторите попытку."
+wp_mysql_remove_fail	=	"Однако вы не сможете удалить базу данных WordPress из-за неверного пароля."
+wp_wizard_msql_password_desc	=	"Введите пароль MariaDB"
+wp_wizard_msql_password_desc_remove	=	"Укажите пароль root для удаления базы данных WordPress"
+wp_wizard_msql_password_label	=	"Пароль root"
+wp_wizard_msql_password_title	=	"Введите пароль MariaDB"
+wp_wizard_remove_msql_desc	=	"При удалении базы данных WordPress все сообщения блога и комментарии будут удалены"
+wp_wizard_remove_msql_title	=	"Удалите базу данных WordPress"
+

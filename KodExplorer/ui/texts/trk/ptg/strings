@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress é uma ferramenta de blogues e plataforma de publicação em open source movida assente em PHP e MySQL. Permite-lhe acomodar um blogue WordPress na sua Synology NAS."
+
+[plugins]
+wp_ifps_name	=	"Inserir imagem da Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert from Photo Station: </strong>Esta extensão requer a versão %s ou superior."
+wp_ifps_need_photostation	=	"<strong>Insert from Photo Station: </strong>Esta extensão deve ser utilizada com a Photo Station."
+wp_ls_desc	=	"Seleccionar idioma de exibição"
+wp_ls_name	=	"Idioma"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Esta extensão requer a versão %s ou posterior."
+wp_str_services_disabled	=	"O serviço está desactivado neste momento."
+
+[wizard]
+wizard_create_new	=	"Criar nova base de dados (a cópia de segurança dos dados anterior será removida, incluindo ficheiros de configuração e base de dados)"
+wizard_decide_restore	=	"Selecione uma das seguintes ações:"
+wizard_found_backup	=	"Base de dados existente para este pacote"
+wizard_restore	=	"Restaurar usando a base de dados original"
+wp_mysql_password_error	=	"Verifique a sua palavra-passe do MariaDB e tente novamente."
+wp_mysql_remove_fail	=	"No entanto, não pode eliminar a base de dados WordPress devido à palavra-passe errada."
+wp_wizard_msql_password_desc	=	"Introduza a sua palavra-passe do MariaDB"
+wp_wizard_msql_password_desc_remove	=	"Disponibilize a sua palavra-passe de root para remover a base de dados WordPress"
+wp_wizard_msql_password_label	=	"Palavra-passe de Root"
+wp_wizard_msql_password_title	=	"Introduza a sua palavra-passe do MariaDB"
+wp_wizard_remove_msql_desc	=	"Se remover a base de dados WordPress todas as publicações e comentários do blog serão removidos"
+wp_wizard_remove_msql_title	=	"Remover a base de dados WordPress"
+

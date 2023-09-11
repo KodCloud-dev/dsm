@@ -1,0 +1,124 @@
+#!/bin/bash
+
+PKG_NAME="KodExplorer"
+PKG_DIR="kodexplorer"
+WEBSITE_ROOT="/var/services/web/$PKG_DIR"
+INFO_FILE="/usr/syno/etc/packages/$PKG_NAME/$PKG_DIR.conf"
+CONF_FILE="config/setting_user.php"
+INST_FILE="data/system/install.lock"
+BACKUP_PATH="" # need to be overwritten
+BACKUP_WEB_PATH="" # need to be overwritten
+
+MainCreate()
+{
+	local output="$1"
+	local pages="$2"
+	local main_function="$3"
+
+	if IsWizardEmpty; then
+		return
+	fi
+
+	for dir in lang/*; do
+		local lan=$(basename "$dir")
+		local wizard_script="${output}_${lan}.sh"
+		cat "wizard_common" > "${wizard_script}"
+		cat "lang/$lan" "wizard_customized" $pages "$main_function" >> "${wizard_script}"
+		CustomWizCreate "${wizard_script}"
+	done
+	chmod +x "${output}"*.sh
+	cp -a "${output}_${DEFAULT}.sh" "${output}.sh"
+}
+
+IsUpgradable()
+{
+	true
+}
+
+IsWizardEmpty()
+{
+	if $REQUIRE_DB_SETUP; then
+		false; return
+	fi
+	true; return
+}
+
+NeedConfirmVirtualHost()
+{
+	local version="$1"
+	if [ ! -z "$version" ] && [ "$version" -lt "1000" ]; then
+		local websetted=$(/var/packages/WebStation/target/tools/synowebservice vhost is-web-share-as-vhost-root; echo $?)
+		return $websetted
+	fi
+
+	return 1
+
+}
+
+CustomHasRunWebsiteSetup()
+{
+	local path="$1"
+	[ -e "$path/$INST_FILE" ]
+}
+
+CustomGetValueFromMetaFile()
+{
+	local key="$1"
+	local backup_info="/var/packages/.$PKG_DIR.conf"
+	local syno_conf="/var/packages/$PKG_NAME/synology.conf"
+	local record_file=""
+
+	if [ -s "$INFO_FILE" ]; then
+		record_file="$INFO_FILE"
+	elif [ -s "$backup_info" ]; then
+		record_file="$backup_info"
+	elif [ -s "$syno_conf" ]; then
+		record_file="$syno_conf"
+	else
+		return
+	fi
+	get_key_value "$record_file" "$key"
+}
+
+GetPreviousPkgBuildNumber()
+{
+	local old_pkg_ver="$SYNOPKG_OLD_PKGVER"
+	if [ -z "${old_pkg_ver}" ]; then
+		# SYNOPKG_OLD_PKGVER does not exist in un-install stage of upgrade
+		old_pkg_ver="$SYNOPKG_PKGVER"
+	fi
+
+	local old_build_number=$(echo "$old_pkg_ver" | cut -d- -f2)
+	echo "$old_build_number"
+}
+
+CustomSetBackupPath()
+{
+	BACKUP_PATH="$(CustomGetBackupPkgPath)"
+}
+
+CustomGetBackupPrefix()
+{
+	local backup_prefix="/$(readlink /var/services/web | cut -d/ -f2)/@appstore/.$PKG_DIR"
+	echo "$backup_prefix"
+}
+
+CustomGetBackupPkgPath()
+{
+	local backup_pkg_path="$(CustomGetBackupPrefix)/$PKG_DIR"
+	echo "$backup_pkg_path"
+}
+
+GetBackupPath()
+{
+	local backup_prefix="${SYNOPKG_PKGDEST_VOL}/@appstore/$PKG_NAME/.backup"
+	echo "$backup_prefix"
+}
+
+ClearBackupDir()
+{
+	local backup_path="$(CustomGetBackupPkgPath)"
+	rm -rf "$backup_path"
+	mkdir -p "$backup_path"
+}
+

@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress is een open source blogtool en publicatieplatform dat is gebaseerd op PHP en MySQL. Met dit pakket kunt u een WordPress-blog op uw Synology NAS hosten."
+
+[plugins]
+wp_ifps_name	=	"Afbeelding invoegen van Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>Deze invoegtoepassing vereist versie %s of later."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>Deze invoegtoepassing moet gebruikt worden met Photo Station."
+wp_ls_desc	=	"Weergavetaal selecteren"
+wp_ls_name	=	"Taal"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Deze invoegtoepassing vereist versie %s of later."
+wp_str_services_disabled	=	"De service is momenteel uitgeschakeld."
+
+[wizard]
+wizard_create_new	=	"Een nieuwe database maken (eerder geback-upte gegevens worden verwijderd, inclusief configuratiebestanden en database)"
+wizard_decide_restore	=	"Selecteer één van de volgende handelingen:"
+wizard_found_backup	=	"Voor dit pakket bestaat een database"
+wizard_restore	=	"Herstellen van de originele database"
+wp_mysql_password_error	=	"Controleer uw MariaDB-wachtwoord en probeer het opnieuw."
+wp_mysql_remove_fail	=	"U kunt de WordPress-database niet verwijderen als gevolg van het verkeerde wachtwoord."
+wp_wizard_msql_password_desc	=	"Voer uw MariaDB-wachtwoord in"
+wp_wizard_msql_password_desc_remove	=	"Geef een rootwachtwoord op om de WordPress-database te verwijderen"
+wp_wizard_msql_password_label	=	"Rootwachtwoord"
+wp_wizard_msql_password_title	=	"MariaDB-wachtwoord invoeren"
+wp_wizard_remove_msql_desc	=	"Als u de WordPress-database verwijdert, zullen alle blogberichten en commentaren worden verwijderd"
+wp_wizard_remove_msql_title	=	"WordPress-database verwijderen"
+

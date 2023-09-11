@@ -1,0 +1,9 @@
+#!/bin/sh
+
+. "$(dirname "$0")"/common
+
+rm -rf "$WEBSITE_ROOT"
+rm -f "$NGINX_CONF_PATH/www.KodExplorer.enable.conf"
+rm -f "$NGINX_CONF_PATH/www.KodExplorer.disabled.conf"
+
+exit 0

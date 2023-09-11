@@ -1,0 +1,28 @@
+#!/bin/sh
+
+. "$(dirname "$0")"/common
+
+CustomSetWebsiteRoot
+
+if [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ]; then
+	BACKUP_PATH=""
+	CustomSetBackupPath
+	
+	# Restore
+	if CustomHasRunWebsiteSetup "$BACKUP_PATH"; then
+		CustomRestoreUpgrade
+	else
+		CustomSetCleanNew
+	fi
+else
+	# blank
+	CustomNewInst
+fi
+
+chown -R http:http "$WEBSITE_ROOT"
+
+# Set initial install setting values
+CustomSetInit
+CustomRemoveBackupConf
+
+exit 0

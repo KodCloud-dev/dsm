@@ -1,0 +1,15 @@
+{
+	".url": {
+		"SYNO.SDS.KodExplorer": {
+			"type": "url",
+			"allUsers": true,
+			"title": "KodExplorer",
+			"desc": "app:app_name",
+			"icon": "images/kodexplorer_{0}.png",
+			"texts": "texts",
+			"protocol": "http",
+			"url": "/kodexplorer/",
+			"port": "80"
+		}
+	}
+}

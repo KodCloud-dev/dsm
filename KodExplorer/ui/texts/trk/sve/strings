@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress är en öppen källösning för bloggverktyg och publiceringsplattform som drivs av PHP och MySQL. Med det här paketet kan din Synology NAS vara värd för en WordPress-blogg."
+
+[plugins]
+wp_ifps_name	=	"Infoga bild från Photo Station"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>Detta plugin-program kräver version %s eller senare."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>Detta plugin-program måste användas med Photo Station."
+wp_ls_desc	=	"Välj visningsspråk"
+wp_ls_name	=	"Språk"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Detta plugin-program kräver version %s eller senare."
+wp_str_services_disabled	=	"Tjänsten är avaktiverad."
+
+[wizard]
+wizard_create_new	=	"Skapa ny databas (förutvarande säkerhetskopierat data tas bort, inklusive konfigurationsfiler och databas)"
+wizard_decide_restore	=	"Välj en av följande åtgärder:"
+wizard_found_backup	=	"Databas finns för det här filpaketet"
+wizard_restore	=	"Återställ med ursprunglig databas"
+wp_mysql_password_error	=	"Kontrollera ditt MariaDB-lösenord och försök igen."
+wp_mysql_remove_fail	=	"Du kan dock inte radera WordPress databas på grund av fel lösenord."
+wp_wizard_msql_password_desc	=	"Ange ditt MariaDB-lösenord"
+wp_wizard_msql_password_desc_remove	=	"Ge root-lösenordet för att ta bort WordPress-databasen"
+wp_wizard_msql_password_label	=	"Root-lösenord"
+wp_wizard_msql_password_title	=	"Ange MariaDB-lösenord"
+wp_wizard_remove_msql_desc	=	"Om du tar bort WordPress-databasen, kommer alla bloggposter och kommentarer att raderas"
+wp_wizard_remove_msql_title	=	"Ta bort WordPress-databasen"
+

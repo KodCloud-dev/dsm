@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress 是開放原始碼 (open source) 的部落格發佈平台，採用的技術為 PHP 及 MySQL。此套件可讓您在 Synology NAS 上架設 WordPress 部落格。"
+
+[plugins]
+wp_ifps_name	=	"從 Photo Station 插入圖片"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>此外掛需要 %s 或以上版本。"
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>此外掛必須與 Photo Station 搭配使用。"
+wp_ls_desc	=	"選擇顯示語言"
+wp_ls_name	=	"語言"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>此外掛需要 %s 或以上版本。"
+wp_str_services_disabled	=	"本服務目前未啟動。"
+
+[wizard]
+wizard_create_new	=	"建立新資料庫（備份資料將會被刪除，包含設定檔與資料庫）"
+wizard_decide_restore	=	"選擇下方任一動作："
+wizard_found_backup	=	"資料庫已存在"
+wizard_restore	=	"使用原本的資料庫還原"
+wp_mysql_password_error	=	"請檢查您的 MariaDB 密碼，然後再試一次。"
+wp_mysql_remove_fail	=	"然而，您無法刪除 WordPress 資料庫，因為密碼輸入錯誤。"
+wp_wizard_msql_password_desc	=	"輸入 MariaDB 密碼"
+wp_wizard_msql_password_desc_remove	=	"請提供 root 密碼來移除 WordPress 資料庫"
+wp_wizard_msql_password_label	=	"Root 密碼"
+wp_wizard_msql_password_title	=	"輸入 MariaDB 密碼"
+wp_wizard_remove_msql_desc	=	"如果您移除 WordPress 資料庫，所有的網誌文章及留言都會遭到刪除"
+wp_wizard_remove_msql_title	=	"移除 WordPress 資料庫"
+

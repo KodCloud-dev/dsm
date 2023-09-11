@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"WordPress は、PHP および MySQLが提供するオープンソースのブログツールであり、発行プラットフォームです。このパッケージは Synology NAS 上でWordPress ブログをホストします。"
+
+[plugins]
+wp_ifps_name	=	"Photo Station から画像を挿入"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>このプラグインはバージョン %s、またはそれ以降が必要です。"
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>このプラグインは Photo Station と一緒に使用する必要があります。"
+wp_ls_desc	=	"表示言語の選択"
+wp_ls_name	=	"言語"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>このプラグインはバージョン %s、またはそれ以降が必要です。"
+wp_str_services_disabled	=	"現在フォト サービスは停止中です"
+
+[wizard]
+wizard_create_new	=	"新しいデータベースを作成（以前バックアップしたデータは、構成ファイルやデータベースを含め、削除されます）"
+wizard_decide_restore	=	"次のいずれかのアクションを 1 つ選択します。"
+wizard_found_backup	=	"このパッケージに対して存在するデータベース"
+wizard_restore	=	"元のデータベース使用して復元"
+wp_mysql_password_error	=	"MariaDB のパスワードを確認してもう一度行ってください。"
+wp_mysql_remove_fail	=	"ただし、パスワードが正しくないので WordPress データベースを削除できません。"
+wp_wizard_msql_password_desc	=	"MariaDB のパスワードを入力"
+wp_wizard_msql_password_desc_remove	=	"root パスワードを入力して WordPress データベースを削除してください"
+wp_wizard_msql_password_label	=	"Root パスワード"
+wp_wizard_msql_password_title	=	"MariaDB パスワードを入力"
+wp_wizard_remove_msql_desc	=	"WordPress データベースを削除すると、すべてのブログ投稿とコメントが削除されます"
+wp_wizard_remove_msql_title	=	"WordPress データベースを削除"
+

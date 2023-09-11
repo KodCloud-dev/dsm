@@ -1,0 +1,10 @@
+{
+    "php73": {
+        "linked": [
+            "/usr/local/etc/php73/conf.d/KodExplorer.ini"
+        ]
+    },
+    "service-cfg": {
+        "jobs": []
+    }
+}

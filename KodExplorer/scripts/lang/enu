@@ -1,0 +1,2 @@
+wizard_website_root_exist="A KodExplorer folder already exists under your Web folder. Please rename it or move it before you install the KodExplorer package."
+wizard_website_root_exist_2="A KodExplorer folder already exists in the web_packages shared folder. Please rename or move this folder before you install the KodExplorer package."

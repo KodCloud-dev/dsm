@@ -1,0 +1,7 @@
+
+# Copyright (c) 2000-2008 Synology Inc. All rights reserved.
+
+[app]
+app_name	=	"KodExplorer"
+description	=	"KodExplorer is an open source web-based file management, code editor. The package enables you to quickly complete the deployment and setup of a private cloud / private cloud disk / online document management system on your DiskStation."
+

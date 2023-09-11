@@ -1,0 +1,29 @@
+
+# Copyright (c) 2000-2022 Synology Inc. All rights reserved.
+
+[app]
+wp_str_meta_desc	=	"A WordPress egy nyílt forrású blog eszköz és kiadói platform, melyet a PHP és a MySQL üzemeltet. A csomag lehetővé teszi, hogy gazdagépként tároljon egy WordPress blogot a Synology NAS-ön."
+
+[plugins]
+wp_ifps_name	=	"Kép beillesztése Photo Stationről"
+wp_ifps_need_higher_version	=	"<strong>Insert From Photo Station: </strong>Ez a plugin %s vagy újabb verziót igényel."
+wp_ifps_need_photostation	=	"<strong>Insert From Photo Station: </strong>Ezt a plugint a Photo Stationnel együtt kell használni."
+wp_ls_desc	=	"Használt nyelv megválasztása"
+wp_ls_name	=	"Nyelv"
+wp_ls_need_higher_version	=	"<strong>Language Selector: </strong>Ez a plugin %s vagy újabb verziót igényel."
+wp_str_services_disabled	=	"Most le van tiltva a szolgáltatás."
+
+[wizard]
+wizard_create_new	=	"Új adatbázis létrehozása (a rendszer eltávolítja a korábbi biztonsági mentési adatokat, ideértve a konfigurációs fájlokat és adatbázisokat is)"
+wizard_decide_restore	=	"Válassza a következő műveletek egyikét:"
+wizard_found_backup	=	"A csomaghoz tartozik adatbázis"
+wizard_restore	=	"Visszaállítás az eredeti adatbázis használatával"
+wp_mysql_password_error	=	"Ellenőrizze MariaDB–jelszavát, majd próbálja újra."
+wp_mysql_remove_fail	=	"A WordPress–adatbázis viszont a rossz jelszó miatt nem törölhető."
+wp_wizard_msql_password_desc	=	"Adja meg MariaDB-jelszavát"
+wp_wizard_msql_password_desc_remove	=	"A WordPress–adatbázis eltávolításához adja meg a root jelszót"
+wp_wizard_msql_password_label	=	"Root jelszó"
+wp_wizard_msql_password_title	=	"Adja meg a MariaDB-jelszót"
+wp_wizard_remove_msql_desc	=	"Ha eltávolítja a WordPress–adatbázist, akkor az összes blogbejegyzés és hozzászólás törlődik"
+wp_wizard_remove_msql_title	=	"WordPress–adatbázis eltávolítása"
+

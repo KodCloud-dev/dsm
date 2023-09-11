@@ -1,0 +1,5 @@
+#!/bin/sh
+
+rm -f /tmp/kod.upgrade
+
+exit 0

@@ -1,0 +1,93 @@
+#!/bin/bash
+
+BackupWPConf()
+{
+	local backup_prefix=$(CustomGetBackupPrefix)
+	[ -d "$backup_prefix" ] || mkdir -p "$backup_prefix"
+	if [ -s "$WEBSITE_ROOT/$CONF_FILE" ]; then
+		cp -a "$WEBSITE_ROOT/$CONF_FILE" "$backup_prefix/"
+	fi
+}
+
+
+WriteBackupInfo() {
+	echo "path=$(CustomGetBackupPrefix)" > "$INFO_FILE"
+	echo "version=$SYNOPKG_OLD_PKGVER" >> "$INFO_FILE"
+}
+
+CustomPreupgrade()
+{
+
+	old_build_number=$(GetPreviousPkgBuildNumber)
+	if [ `awk -v var1=$old_build_number 'BEGIN{print(var1*100)}'` -le "425" ]; then
+		rm -rf "$(GetBackupPath)"
+		CustomBackupData
+		WriteBackupInfo
+	fi
+}
+
+CustomBackupData()
+{
+	local backup_path=$(CustomGetBackupPkgPath)
+	[ -d "$backup_path" ] || mkdir -p "$backup_path"
+
+	rm -rf "$WEBSITE_ROOT/data/User/*/data/temp/*"
+	cp -a "$WEBSITE_ROOT/." "$backup_path/"
+}
+
+CustomSetWebsiteRoot()
+{
+	mv "$SYNOPKG_PKGDEST/web" "$WEBSITE_ROOT"
+}
+
+HideCoreUpgrade()
+{
+	if [ ! -s "$WEBSITE_ROOT/$CONF_FILE" ]; then
+		exit 1
+	fi
+	if ! grep -q "AUTOMATIC_UPDATER_DISABLED" "$WEBSITE_ROOT/$CONF_FILE"; then
+		echo "define( 'AUTOMATIC_UPDATER_DISABLED', true );" >> "$WEBSITE_ROOT/$CONF_FILE"
+	fi
+	if ! grep -q "pre_site_transient_update_core" "$WEBSITE_ROOT/$CONF_FILE"; then
+		echo "add_filter('pre_site_transient_update_core','__return_null');" >> "$WEBSITE_ROOT/$CONF_FILE"
+	fi
+}
+
+SetSecurityKeys()
+{
+	local security_key="AUTH_KEY SECURE_AUTH_KEY LOGGED_IN_KEY NONCE_KEY AUTH_SALT SECURE_AUTH_SALT LOGGED_IN_SALT NONCE_SALT"
+	local rand_key
+	for key_name in $security_key; do
+		rand_key=$(env RANDFILE=/tmp/.rnd openssl rand -base64 48)
+		sed -i "/'$key_name'/c\\define('$key_name','$rand_key');" "$WEBSITE_ROOT/$CONF_FILE"
+	done
+}
+
+CustomRestoreUpgrade()
+{
+	local restore_item_list="$CONF_FILE config/define.php data plugins"
+	for item in $restore_item_list; do
+		if [ -e "$BACKUP_PATH/$item" ]; then
+			mkdir -p "$WEBSITE_ROOT/$(dirname "$item")"
+			cp -aruf "$BACKUP_PATH/$item" "$WEBSITE_ROOT/$(dirname "$item")"
+	    fi
+	done
+	rm -rf "$BACKUP_PATH"
+}
+
+CustomStart()
+{
+	local ini_source="/var/packages/KodExplorer/target/synology_added/etc/SYNO.SDS.KodExplorer.ini"
+	local ini_dest="/usr/local/etc/php73/cli/conf.d/"
+	cp $ini_source $ini_dest
+	restart pkg-WebStation-php73
+}
+
+CustomStop()
+{
+	local ini_dest="/usr/local/etc/php73/cli/conf.d/"
+	rm "$ini_dest/SYNO.SDS.KodExplorer.ini"
+
+	restart pkg-WebStation-php73
+}
+
