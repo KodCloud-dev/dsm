@@ -29,8 +29,10 @@ CustomRestoreUpgrade()
 		if [ -e "$backup_web_dir/$item" ]; then
 			mkdir -p "${WEBSITE_ROOT}/$(dirname "$item")"
 			cp -aruf "$backup_web_dir/$item" "${WEBSITE_ROOT}/$(dirname "$item")"
-	   fi
+	    fi
 	done
+
+	rm -rf "$backup_web_dir"
 }
 
 CustomMoveLegacyBackupWebDir()
