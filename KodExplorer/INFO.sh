@@ -4,10 +4,12 @@
 package="KodExplorer"
 
 . "/pkgscripts/include/pkg_util.sh"
-version="4.51-602308"
+version="4.51-602309"
 instuninst_restart_services="nginx"
 startstop_restart_services="nginx"
 firmware="6.0-7300"
+os_min_ver="6.1-14715"
+os_max_ver="7.0-40000"
 install_dep_packages="WebStation>=2.1.9-0153:PHP7.3>=7.3.9-0006"
 displayname="KodExplorer"
 displayname_enu="KodExplorer" 
