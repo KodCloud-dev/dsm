@@ -3,8 +3,11 @@
 
 . "$(dirname "$0")"/common
 
-if IsPreviousVersionBelowDSM7 && [ -e "$WEBSITE_ROOT" ]; then
-	echo "$wizard_website_root_exist_2" >> "$SYNOPKG_TEMP_LOGFILE"
+R_SIZE=$(df ${SYNOPKG_PKGDEST_VOL} | awk 'NR==2{print $4}')
+W_SIZE=$(du -s "$WEBSITE_ROOT" | cut -f1)
+
+if [ $R_SIZE -lt $W_SIZE ];then
+	echo "${SYNOPKG_PKGDEST_VOL}-$wizard_upgrade_space_error" >> "$SYNOPKG_TEMP_LOGFILE"
 	exit 1
 fi
 # empty

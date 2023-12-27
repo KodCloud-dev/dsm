@@ -1,5 +1,6 @@
 wizard_website_root_exist="KodBox 文件夹已在您的 Web 文件夹中。请在安装 KodBox 套件之前对其重命名或将其移动到其他位置。"
 wizard_website_root_exist_2="web_packages 共享文件夹中已存在 KodBox 文件夹。请在安装 KodBox 套件之前重命名或移动此文件夹。"
+wizard_upgrade_space_error="剩余空间不足以备份站点, 更新失败"
 wizard_db_name_error="请指定数据库名称。"
 mysql_password_error="请检查 MariaDB 密码，然后再试一次。"
 wizard_db_name_exist="数据库已存在。为避免被 KodBox 安装覆盖，请使用另一个数据库名称。"

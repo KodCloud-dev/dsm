@@ -8,8 +8,8 @@ CustomChangeDBUserInfo()
 	local db_pass="$(echo "$3" | EscapeStandardSedStringOnPHP )"
 
 	if [ -f "$path/$CONF_FILE" ]; then
-		sed -i "s/KDB_USER/$db_user/g" "$path/$CONF_FILE"
-		sed -i "s/kDB_PWD/$db_pass/g" "$path/$CONF_FILE"
+		sed -i "s|'DB_USER' => .*|'DB_USER' => '$db_user',|g" "$path/$CONF_FILE"
+		sed -i "s|'DB_PWD' => .*|'DB_PWD' => '$db_pass',|g" "$path/$CONF_FILE"
 	fi
 }
 
@@ -20,14 +20,13 @@ WriteBackupInfo() {
 
 CustomBackupData()
 {
-	local prev_website_root="$(GetWebsiteRootOfPreviousVersion)"
+	local prev_website_root="$WEBSITE_ROOT"
 
 	ClearBackupDir
 
 	local backup_web_dir="$(GetBackupWebDir)"
 	rm -rf "${prev_website_root}/data/temp/{files,_cache,_fields}"
 	cp -a "${prev_website_root}/." "${backup_web_dir}/"
-#	mv "${prev_website_root}/*" "${backup_web_dir}/"
 }
 
 CustomRestoreUpgrade()
@@ -37,14 +36,16 @@ CustomRestoreUpgrade()
 		backup_web_dir="$BACKUP_PATH/$PKG_DIR"
 	fi
 
-	local restore_item_list="$CONF_FILE config/define.php data plugins"
+	local restore_item_list="$CONF_FILE config/define.php data/files data/temp"
 	for item in $restore_item_list; do
 		if [ -e "$backup_web_dir/$item" ]; then
 			mkdir -p "${WEBSITE_ROOT}/$(dirname "$item")"
-			mv "${WEBSITE_ROOT}/data/system/fastinstall.lock" "${WEBSITE_ROOT}/data/system/install.lock"
 			cp -arf "$backup_web_dir/$item" "${WEBSITE_ROOT}/$(dirname "$item")"
 	   fi
 	done
+
+	mv "${WEBSITE_ROOT}/data/system/fastinstall.lock" "${WEBSITE_ROOT}/data/system/install.lock"
+	cp -arn "$backup_web_dir/plugins/." "${WEBSITE_ROOT}/plugins/"
 }
 
 CustomMoveLegacyBackupWebDir()
@@ -74,9 +75,9 @@ CustomSetInit()
 		mv "$WEBSITE_ROOT/config/setting_user-sample.php" "$WEBSITE_ROOT/$CONF_FILE"
 		local pass_modify=$(echo "$DB_USER_PASS" | EscapeStandardSedStringOnPHP )
 
-		sed -i "s|KDB_NAME|$DB_NAME|g" "$WEBSITE_ROOT/$CONF_FILE"
-		sed -i "s|KDB_USER|$DB_USER|g" "$WEBSITE_ROOT/$CONF_FILE"
-		sed -i "s|KDB_PWD|$pass_modify|g" "$WEBSITE_ROOT/$CONF_FILE"
+		sed -i "s|'DB_NAME' => .*|'DB_NAME' => '$DB_NAME',|g" "$WEBSITE_ROOT/$CONF_FILE"
+		sed -i "s|'DB_USER' => .*|'DB_USER' => '$DB_USER',|g" "$WEBSITE_ROOT/$CONF_FILE"
+		sed -i "s|'DB_PWD' => .*|'DB_PWD' => '$pass_modify',|g" "$WEBSITE_ROOT/$CONF_FILE"
 
 	fi
 }

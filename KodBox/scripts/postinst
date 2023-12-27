@@ -4,25 +4,6 @@
 # empty
 CustomPostinst
 
-MoveLegacyBackupDataToDSM7BackupPath()
-{
-	local dsm7_backup_path="$(GetBackupPath)"
-	if [ -e "$dsm7_backup_path" ]; then
-		return
-	fi
-
-	local legacy_backup_path="$(GetLegacyBackupDataPrefix)"
-	if [ -z "$legacy_backup_path" ] || [ ! -e "$legacy_backup_path" ]; then
-		return
-	fi
-
-	echo "migrate legacy backup data in [${legacy_backup_path}] to DSM backup path"
-	mv "$legacy_backup_path" "${dsm7_backup_path}"
-	CustomMoveLegacyBackupWebDir "$dsm7_backup_path"
-}
-
-MoveLegacyBackupDataToDSM7BackupPath
-
 if [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ]; then
 	InitBackupPath
 
@@ -35,8 +16,8 @@ if [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ]; then
 		CustomChangeDBUserInfo "$BACKUP_WEB_PATH" "$DB_USER" "$DB_USER_PASS"
 
 		CustomRestoreUpgrade
-		CustomUseUnixSocket
 	else
+		# empty
 		CustomSetCleanNew
 	fi
 	chown -R $PKG_NAME:http      "$WEBSITE_ROOT"
@@ -46,12 +27,12 @@ else
 	DB_NAME="$pkgwizard_db_name"
 	DB_USER="$pkgwizard_db_user_account"
 	DB_USER_PASS="$pkgwizard_db_user_password"
+	# empty
 	CustomNewInst
+	DBSQLImport $DB_USER $DB_USER_PASS $MYSQL $DB_NAME "db error"
 fi
 
-# Set initial install setting values
 CustomSetInit
-DBSQLImport $DB_USER $pkgwizard_db_user_password $MYSQL $pkgwizard_db_name "db error"
 
 # Write synology.conf
 echo "db_name=$DB_NAME" > "$INFO_FILE.tmp"

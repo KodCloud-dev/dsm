@@ -67,11 +67,6 @@ CustomMoveLegacyBackupWebDir()
 	done
 }
 
-CustomChangeDBUserInfo()
-{
-	:
-}
-
 CustomRemove()
 {
 	:
@@ -83,11 +78,6 @@ CustomPreupgrade()
 }
 
 CustomPreuninst()
-{
-	:
-}
-
-CustomBackupData()
 {
 	:
 }

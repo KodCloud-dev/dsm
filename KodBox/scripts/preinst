@@ -6,7 +6,7 @@
 if [ "$SYNOPKG_PKG_STATUS" == "UPGRADE" ]; then
 	exit 0
 fi
-
+# empty
 CustomPreinst
 
 # Check existence of website root

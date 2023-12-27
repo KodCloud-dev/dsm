@@ -1,5 +1,6 @@
 wizard_website_root_exist="A KodBox folder already exists under your Web folder. Please rename it or move it before you install the KodBox package."
 wizard_website_root_exist_2="A KodBox folder already exists in the web_packages shared folder. Please rename or move this folder before you install the KodBox package."
+wizard_upgrade_space_error="Insufficient remaining space to backup site, upgrade failed."
 wizard_db_name_error="Please specify the database name."
 mysql_password_error="Please check your MariaDB password and try again."
 wizard_db_name_exist="Database already exists. To avoid being overwritten by KodBox installation, please use another database name."

@@ -21,8 +21,6 @@ if [ "$SYNOPKG_PKG_STATUS" = "UNINSTALL" ]; then
 	rm -rf "$(GetBackupPath)" "$INFO_FILE"
 # upgrade时执行备份
 else
-	rm -rf "$(GetBackupPath)"
-	CustomRemove
 	CustomBackupData
 	echo "path=$(GetBackupPath)" >> "$INFO_FILE"
 	echo "version=$SYNOPKG_PKGVER" >> "$INFO_FILE"

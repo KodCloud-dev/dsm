@@ -13,7 +13,7 @@
             "php": {
                "profile_name": "KodBox Profile",
                "profile_desc": "PHP Profile for KodBox",
-               "backend": 8,
+               "backend": 11,
                "open_basedir": "/var/services/web_packages/kodbox:/tmp:/var/services/tmp",
                "extensions": [
                   "bz2",
