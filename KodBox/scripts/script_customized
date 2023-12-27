@@ -46,6 +46,7 @@ CustomRestoreUpgrade()
 
 	mv "${WEBSITE_ROOT}/data/system/fastinstall.lock" "${WEBSITE_ROOT}/data/system/install.lock"
 	cp -arn "$backup_web_dir/plugins/." "${WEBSITE_ROOT}/plugins/"
+	rm -rf "$backup_web_dir"
 }
 
 CustomMoveLegacyBackupWebDir()

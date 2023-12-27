@@ -1,7 +1,7 @@
 #!/bin/bash
 
 . "$(dirname "$0")"/common
-# empty
+# blank
 CustomPostinst
 
 MoveLegacyBackupDataToDSM7BackupPath()
@@ -34,7 +34,7 @@ if [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ]; then
 	chown -R $PKG_NAME:http      "$WEBSITE_ROOT"
 	chown -R $PKG_NAME:$PKG_NAME "$(GetBackupPath)"
 else
-	# New install
+	# blank
 	CustomNewInst
 fi
 
