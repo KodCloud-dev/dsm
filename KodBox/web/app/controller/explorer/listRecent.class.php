@@ -88,9 +88,11 @@ class explorerListRecent extends Controller{
 	}
 	private function listRecentWith($timeType,&$result){
 		$userID = USER_ID;
+		$userInfo = Model('User')->getInfo($userID);
 		$where  = array(
 			'targetType'	=> SourceModel::TYPE_USER,
 			'targetID'		=> $userID,
+			'parentLevel'	=> array("like",',0,'.$userInfo['sourceInfo']['sourceID'].',%'),
 			'isFolder'		=> 0,
 			'isDelete'		=> 0,
 			'size'			=> array('>',0),
@@ -104,7 +106,10 @@ class explorerListRecent extends Controller{
 			if($timeType == 'createTime'){$where['createUser'] = $userID;}
 			if($timeType == 'modifyTime'){$where['modifyUser'] = $userID;}
 		}
-		$where[$timeType] = array('>',time() - 3600*24*60);//2个月内
+		$where[$timeType] = array(
+			array('>',time() - 3600*24*60),//2个月内
+			array('<',time()),// 忽略大于当前时间内容;
+		);
 
 		$maxNum = 50;	//最多150项
 		$field  = 'sourceID,name,createTime,modifyTime,viewTime';

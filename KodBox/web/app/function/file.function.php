@@ -303,14 +303,9 @@ function get_path_father($path){
 function get_path_ext($path){
 	$name = get_path_this($path);
 	$ext = '';
-	if(strstr($name,'.')){
-		$ext = substr($name,strrpos($name,'.')+1);
-		$ext = strtolower($ext);
-	}
-	if (strlen($ext)>3 && preg_match("/([\x81-\xfe][\x40-\xfe])/", $ext, $match)) {
-		$ext = '';
-	}
-	return htmlspecialchars($ext);
+	if(strstr($name,'.')){$ext = substr($name,strrpos($name,'.')+1);}
+	$isMatch = preg_match("/[0-9a-zA-Z_]+/",$ext,$match);// 只允许数字字母和下划线
+	return ($isMatch && $match[0]) ? strtolower($match[0]):'';
 }
 
 
@@ -583,6 +578,7 @@ function move_file($source,$dest,$repeat_add,$repeat_type){
 	if(file_exists($dest)){
 		$dest = get_filename_auto($dest,$repeat_add,$repeat_type);//同名文件处理规则
 	}
+	@chmod($source, DEFAULT_PERRMISSIONS);
 	$result = intval(@rename($source,$dest));
 	if (! $result) { // windows部分ing情况处理
 		$result = intval(@copy_64($source,$dest));
@@ -920,6 +916,8 @@ function is_text_file($ext){
 		'x3d','xaml','xbl','xcscheme','xhtml','xib','xml','xq','xquery','xsd','xsl','xslt','xu','xul','xy',
 		'yaml','yml','ys','z80','mht','mhtml',
 		'zeek','zsh','zsh-template','zsh-theme','zsh-update','zsh_history','zshrc','zshrc_self',
+		'service','target','lightbgcolor','cshrc','crontab','environment','exports','defs',
+		'odin','jexl','plsql','robot',
 	);
 	if($ext === -1) return $extArray;
 	return in_array($ext,$extArray);
@@ -1023,7 +1021,7 @@ function path_clear_name($path){
 function write_log($log, $type = 'default', $level = 'log'){
 	if(!defined('LOG_PATH')) return;
 	list($usec, $sec) = explode(' ', microtime());
-	$now_time = date('[H:i:s.').substr($usec,2,3).'] ';
+	$now_time = date('[H:i:s.').substr($usec,2,3).' id-'.REQUEST_ID.']';
 	$target   = LOG_PATH . strtolower($type) . '/';
 	mk_dir($target);
 	if (!path_writeable($target)){
@@ -1039,7 +1037,7 @@ function write_log($log, $type = 'default', $level = 'log'){
 	}
 	if(!file_exists($target)){
 		error_log("<?php exit;?>\n", 3,$target);
-		@chmod($target,DEFAULT_PERRMISSIONS);
+		@chmod($target,0777);
 	}
 
 	if(is_object($log) || is_array($log)){

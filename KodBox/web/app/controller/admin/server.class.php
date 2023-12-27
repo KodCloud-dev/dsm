@@ -9,7 +9,7 @@ class adminServer extends Controller {
 	}
 
 	// phpinfo
-	public function srvPhpinfo(){
+	public function srvPinfo(){
 		phpinfo();exit;
 	}
 
@@ -266,6 +266,9 @@ class adminServer extends Controller {
 		if($type != 'file'){
 			$text[] = "\$config['cache']['{$type}']['host'] = '".$data['host']."';";
 			$text[] = "\$config['cache']['{$type}']['port'] = '".$data['port']."';";
+			if ($type == 'redis' && $data['auth']) {
+				$text[] = "\$config['cache']['{$type}']['auth'] = '".$data['auth']."';";
+			}
 		}
 		$content = implode(PHP_EOL, $text);
 		if(!file_put_contents($file, $content, FILE_APPEND)) {
@@ -286,14 +289,22 @@ class adminServer extends Controller {
         $handle = new $cacheType();
 		try{
 			if($type == 'redis') {
-				$conn = $handle->connect($data['host'], $data['port'], 1);
+				$handle->connect($data['host'], $data['port'], 1);
+				$auth = Input::get('redisAuth');
+				if ($auth) {
+					$data['auth'] = $auth;
+					$handle->auth($auth);
+				}
+				$conn = $handle->ping();
 			}else{
 				$conn = $handle->addServer($data['host'], $data['port']);
 				if($conn && !$handle->getStats()) $conn = false;
 			}
 			if(!$conn) show_json(sprintf(LNG('admin.install.cacheError'),"[{$type}]"), false);
 		}catch(Exception $e){
-			show_json(sprintf(LNG('admin.install.cacheConnectError'),"[{$type}]"), false);
+			$msg = sprintf(LNG('admin.install.cacheConnectError'),"[{$type}]");
+			$msg .= '<br/>'.$e->getMessage();
+			show_json($msg, false);
 		}
 		return $data;
 	}
@@ -488,7 +499,7 @@ class adminServer extends Controller {
 
 		// 数据库配置存缓存，用于清除获取
 		$key = 'db_change.new_config.' . date('Y-m-d');
-		Cache::set($key, array('type' => $dbType, 'db' => $option));
+		Cache::set($key, array('type' => $dbType, 'db' => $option), 3600*24);
 
         // 2. 复制数据库
         $this->dbChangeAct($database, $option, $dbType);
@@ -503,7 +514,7 @@ class adminServer extends Controller {
 	}
 
 	// 任务进度入缓存
-	private function taskToCache($task, $id = null){
+	private function taskToCache($task, $id = ''){
 		$total = isset($task->task['taskTotal']) ? $task->task['taskTotal'] : $task->task['taskFinished'];
         $cache = array(
             'currentTitle'  => $task->task['currentTitle'],
@@ -513,8 +524,9 @@ class adminServer extends Controller {
 		if($cache['taskFinished'] > 0 && $cache['taskTotal'] == $cache['taskFinished']) {
 			$cache['success'] = 1;
 		}
-		$key = $id ? $id : $task->task['id'];
-		Cache::set('task_'.$key, $cache);
+		// 某些环境下进度请求获取不到缓存，加上过期时间后正常，原因未知
+		$key = !empty($task->task['id']) ? $task->task['id'] : $id;
+		Cache::set('task_'.$key, $cache, 3600*24);
 		$task->end();
     }
 
@@ -527,14 +539,14 @@ class adminServer extends Controller {
 	 */
     public function dbChangeAct($database, $option, $type){
 		// 1.初始化db
-		$manageOld = new DbManage($database, $type);
-		$manageNew = new DbManage($option, $type);
+		$manageOld = new DbManage($database);
+		$manageNew = new DbManage($option);
 		$dbNew = $manageNew->db(true);
 
 		// 2.指定库存在数据表，提示重新指定；不存在则继续
 		$tableNew = $dbNew->getTables();
 		if(!empty($tableNew)) {
-			show_json(LNG('admin.setting.dbNeedNew'), false);
+			show_json(LNG('admin.setting.recDbExist'), false);
 		}
 		if(Input::get('check', null, false)) {
 			show_json(LNG('admin.setting.checkPassed'));
@@ -544,14 +556,14 @@ class adminServer extends Controller {
 		echo json_encode(array('code'=>true,'data'=>'OK', 'info'=>1));
 		http_close();
 
-		$taskCrt = new Task('db.new.table.create', $type, 0, LNG('admin.setting.dbCreate'));
+		$taskId	 = 'db.new.table.create';
+		$taskCrt = new Task($taskId, $type, 0, LNG('admin.setting.dbCreate'));
 		// 3.表结构写入目标库
-		// TODO 这里其实应该从当前库导出表结构并创建；相互转换有点困难
-		// $sql = 'show create table `xxx`';	// mysql
-		// $sql = 'SELECT sql FROM sqlite_master WHERE type="table" AND name = "xxx"';	// sqlite
-        $file = CONTROLLER_DIR . "install/data/{$type}.sql";
+		$file = $manageOld->getSqlFile($type);
         $manageNew->createTable($file, $taskCrt);
+		$this->taskToCache($taskCrt, $taskId);
 		$tableNew = $dbNew->getTables();
+		del_dir(get_path_father($file));
 
 		// 4.获取当前表数据，写入sql文件
 		$pathLoc = $this->tmpActPath('change');
@@ -559,26 +571,29 @@ class adminServer extends Controller {
 
 		$fileList = array();
 		$tableOld = $manageOld->db()->getTables();
-		$tableOld = array_diff($tableOld, array('______', 'sqlite_sequence'));
+		$tableOld = array_diff($tableOld, array('______', 'sqlite_sequence'));	// 排除sqlite系统表
 		$total = 0;
         foreach($tableOld as $table) {
 			if(!in_array($table, $tableNew)) continue;
 			$total += $manageOld->model($table)->count();
 		}
+		$taskId	 = 'db.old.table.select';
 		$taskGet = new Task('db.old.table.select', $type, $total, LNG('admin.setting.dbSelect'));
         foreach($tableOld as $table) {
-			// 对比原始库，当前库如有新增表，直接跳过
+			// 对比原始库，当前库如有新增表（不存在的表），直接跳过
 			if(!in_array($table, $tableNew)) continue;
 			$file = $pathLoc . $table . '.sql';
             $manageOld->sqlFromDb($table, $file, $taskGet);
             $fileList[] = $file;
 		}
 		// 这里的task缺失id等参数，导致cache无法保存，原因未知
-		$this->taskToCache($taskGet, 'db.old.table.select');
+		$this->taskToCache($taskGet, $taskId);
 
-		$taskAdd = new Task('db.new.table.insert', $type, 0, LNG('admin.setting.dbInsert'));
+		$taskId	 = 'db.new.table.insert';
+		$taskAdd = new Task($taskId, $type, 0, LNG('admin.setting.dbInsert'));
 		// 5.读取sql文件，写入目标库
         $manageNew->insertTable($fileList, $taskAdd);
+		$this->taskToCache($taskAdd, $taskId);
 
 		// 6.删除临时sql文件
         del_dir($pathLoc);
@@ -624,13 +639,15 @@ class adminServer extends Controller {
 			show_json(LNG('admin.setting.recDbFileErr'), false);
 		}
 		// 检测结果直接返回
-		if(Input::get('check', null, false) && $type == 'mysql') {
-			$dbname = 'kod_rebuild_test';
-			// 如果没有权限，这里会直接报错
-		    $res = Model()->db()->execute("create database `{$dbname}`");
-		    if ($res) {
-		        Model()->db()->execute("drop database if exists `{$dbname}`");
-		    }
+		if(Input::get('check', null, false)) {
+			if ($type == 'mysql') {
+				// 如果没有权限，这里会直接报错
+				$dbname = 'kod_rebuild_test';
+				$res = Model()->db()->execute("create database `{$dbname}`");
+				if ($res) {
+					Model()->db()->execute("drop database if exists `{$dbname}`");
+				}
+			}
 			show_json(LNG('admin.setting.checkPassed'));
 		}
 		echo json_encode(array('code'=>true,'data'=>'OK', 'info'=>1));
@@ -651,16 +668,20 @@ class adminServer extends Controller {
 
 		// 2.2 新建数据库
 		$database = $this->recDatabase($data);
-        $manage = new DbManage($database, $type);
+        $manage = new DbManage($database);
         $manage->db(true);   // 新建数据库
 
         // 2.3 新建数据表
-        $taskCrt = new Task('recovery.db.table.create', $type, 0, LNG('admin.setting.dbCreate'));
+		$taskId	 = 'recovery.db.table.create';
+        $taskCrt = new Task($taskId, $type, 0, LNG('admin.setting.dbCreate'));
         $manage->createTable($file, $taskCrt);
+		$this->taskToCache($taskCrt, $taskId);
 
 		// 2.4 读取sql文件，写入目标库
-        $taskAdd = new Task('recovery.db.table.insert', $type, 0, LNG('admin.setting.dbInsert'));
+		$taskId	 = 'recovery.db.table.insert';
+        $taskAdd = new Task($taskId, $type, 0, LNG('admin.setting.dbInsert'));
         $manage->insertTable($fileList, $taskAdd);
+		$this->taskToCache($taskAdd, $taskId);
 
 		// 2.5 删除临时sql文件
         del_dir($pathLoc);
@@ -719,7 +740,7 @@ class adminServer extends Controller {
 			$database['db_dsn'] = $dsn;
 		}
 		$key = 'db_recovery.new_config.' . date('Y-m-d');
-		Cache::set($key, array('type' => $type, 'db' => $database));
+		Cache::set($key, array('type' => $type, 'db' => $database), 3600*24);
 		return $database;
 	}
 
@@ -773,7 +794,6 @@ class adminServer extends Controller {
 		$task = $this->actTask($type);
 		foreach($task as $key) {
 			Task::kill($key);
-			// Cache::remove($key);
 			Cache::remove('task_'.$key);
 		}
 		// 2.删除临时sql目录
@@ -791,7 +811,7 @@ class adminServer extends Controller {
 		if($type == 'sqlite') {
 			del_file($cache['db']['db_name']);
 		}else if ($type == 'mysql') {
-			$manage = new DbManage($cache['db'], $type);
+			$manage = new DbManage($cache['db']);
 			// if($manage) $manage->dropTable();
 			if($manage) {
 				$dbname = $cache['db']['db_name'];

@@ -22,15 +22,13 @@ class explorerListDriver extends Controller{
 	private function rootList(){
 		$dataList = Model('Storage')->listData();
 		$list = array();
-		if($this->config['systemOS']=='windows'){
-			$check = 'CDEFGHIJKLMNOPQRSTUVWXYZ';
-			for($i=0;$i<strlen($check);$i++){
-				$this->driverMake($list,"$check[$i]:/");
-			}
-		}else{
-			$this->driverOthers($list);
-		}
 		
+		if($GLOBALS['config']['systemOption']['systemListDriver'] == '1'){
+			$diskList = KodIO::diskList(false);
+			foreach ($diskList as $path) {
+				$this->driverMake($list,$path);
+			}
+		}
 		foreach ($dataList as $item) {
 			$list[] = array(
 				"name"			=> $item['name'],
@@ -50,12 +48,27 @@ class explorerListDriver extends Controller{
 	
 	// 对同一类型有多个存储的进行归类;
 	private function driverListGroup(&$result){
-		if(count($result['folderList']) <= 5) return;
+		$notEqual  = array('!='=>'1');
+		$groupShow = array(
+			array(
+				'type' 	=> 'io-type-default',
+				'title' => LNG('admin.storage.current'),
+				"filter"=> array('driverDefault'=>array('='=>'1')),
+			)
+		);
+		if(count($result['folderList']) <= 5){
+			$groupShow[] = array(
+				'type' 	=> 'io-type-others',
+				'title' => LNG('common.others'),
+				"filter"=> array('driverDefault'=>$notEqual),
+			);
+			$result['groupShow'] = $groupShow;
+			return;
+		}
 		
 		$groupMinNumber = 3; // 超过数量才显示分组,否则归类到其他;
 		$driverOthers   = array();
-		$groupShow 		= array();
-		$listGroup 		= array_to_keyvalue_group($result['folderList'],'driverType');
+		$listGroup = array_to_keyvalue_group($result['folderList'],'driverType');
 		foreach ($listGroup as $key=>$val){
 			if(count($val) < $groupMinNumber){
 				$driverOthers[] = $key;continue;
@@ -64,14 +77,14 @@ class explorerListDriver extends Controller{
 			$groupShow[] = array(
 				'type' 	=> 'io-type-'.$key,
 				'title' => LNG($langKey) != $langKey ? LNG($langKey) : $key,
-				"filter"=> array('ioDriver'=>array('='=> $key)),
+				"filter"=> array('ioDriver'=>array('='=> $key),'driverDefault'=>$notEqual),
 			);
 		}
 		if(count($driverOthers) > 0){
 			$groupShow[] = array(
 				'type' 	=> 'io-type-others',
 				'title' => LNG('common.others'),
-				"filter"=> array('ioDriver'=>array('in'=>$driverOthers)),
+				"filter"=> array('ioDriver'=>array('in'=>$driverOthers),'driverDefault'=>$notEqual),
 			);
 		}
 		$result['groupShow'] = $groupShow;
@@ -127,7 +140,7 @@ class explorerListDriver extends Controller{
 	}
 	public function parsePathChildren(&$info,$current){
 		if($info['type'] == 'file' || isset($info['hasFolder']) ) return $info;	
-		$ioAllow = array('Local','MinIO');// 'Local','MinIO'
+		$ioAllow = array('Local');// array('Local','MinIO')
 		$pathParse = KodIO::parse($current['path']);
 		$isLocal = $pathParse['type'] ? false:true;
 		$isIoAllow = isset($current['ioType']) && in_array($current['ioType'],$ioAllow);
@@ -156,25 +169,6 @@ class explorerListDriver extends Controller{
 		return $info;
 	}
 
-	
-	private function driverOthers(&$list){
-		if(!function_exists("shell_exec")){
-			return $this->driverMake($list,"/");
-		}
-		$rows = explode("\n", shell_exec('df -l'));
-		array_shift($rows);array_pop($rows);
-		$disable = array(//虚拟内存等;
-			'/private/var/vm','/System/Volumes/Data',
-			'/Volumes/Update','/Volumes/Recovery'
-		);
-		foreach ($rows as $row) {
-			$item = preg_split("/[\s]+/", $row);
-			$path = $item[count($item)-1];
-			if(!strstr($item[0],'/dev/')) continue;
-			if(in_array($path,$disable)) continue;
-			$this->driverMake($list,$path);
-		}
-	}
 	private function driverMake(&$list,$path){
 		if(!file_exists($path)) return;
 		$total  = @disk_total_space($path);

@@ -33,8 +33,55 @@ function get_client_ip($b_ip = true){
 		// $client_ip = substr($client_ip,$pos+1);
 		$client_ip = substr($client_ip,0,$pos);
 	}
-	return trim($client_ip);
+	$client_ip = trim($client_ip);
+	if (!$client_ip || filter_var($client_ip, FILTER_VALIDATE_IP)) return $client_ip;
+	// 过滤可能伪造的ip
+	preg_match('/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/', $client_ip, $matches);
+	$client_ip = filter_var($matches[1], FILTER_VALIDATE_IP);
+	return $client_ip ? $client_ip : 'unknown';
 }
+
+if(!function_exists('filter_var')){
+	if(!defined('FILTER_VALIDATE_IP')){
+		define('FILTER_VALIDATE_INT','int');
+		define('FILTER_VALIDATE_FLOAT','float');
+		define('FILTER_VALIDATE_EMAIL','email');
+		define('FILTER_VALIDATE_REGEXP','reg');
+		define('FILTER_VALIDATE_URL','url');
+		define('FILTER_VALIDATE_IP','ip');
+		
+		define('FILTER_FLAG_IPV4','ipv4');
+		define('FILTER_FLAG_IPV6','ipv6');
+		define('FILTER_FLAG_EMAIL_UNICODE','email');
+		
+		define('FILTER_SANITIZE_STRING','string');
+		define('FILTER_SANITIZE_NUMBER_INT','int');
+		define('FILTER_SANITIZE_NUMBER_FLOAT','float');
+		define('FILTER_SANITIZE_SPECIAL_CHARS','special');
+		define('FILTER_SANITIZE_EMAIL','email');
+	}
+	function filter_var($str,$filter,$option=false){
+		$mapReg = array(
+			'ip' 		=> "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/",
+			'ipv4' 		=> "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/",
+			'ipv6' 		=> "/\s*(([:.]{0,7}[0-9a-fA-F]{0,4}){1,8})\s*/",
+			'url'		=> "/(http|ftp|https):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&:\/~\+#]*[\w\-\@?^=%&\/~\+#])?/",
+			'email'		=> '/\w+([\.\-]\w+)*\@\w+([\.\-]\w+)*\.\w+/',
+			'int'		=> "/[-\+]?\d+/",
+			'float'		=> "/[-\+]?\d+(\.\d+)?/",
+			// 'reg'	=> _get($options,'regexp'),
+		);
+		if($filter == 'string'){return addslashes($str);}
+		if($filter == 'special'){return htmlspecialchars($str,ENT_QUOTES,'UTF-8',false);}
+		
+		if($filter== 'ip' && $option == 'ipv4'){$filter = 'ipv4';}
+		if($filter== 'ip' && $option == 'ipv6'){$filter = 'ipv6';}
+		$reg = $mapReg[$filter];
+		if(preg_match($reg,$str,$matches)){return $matches[1];}
+		return $str;
+	}
+}
+
 function get_server_ip(){
 	static $ip = NULL;
 	if ($ip !== NULL) return $ip;
@@ -278,6 +325,7 @@ function curl_progress_end($curl,&$curlResult=false){
 		$GLOBALS['curl_request_error'] = array('message'=>$errorMessage,'url'=> $curlInfo['url'],'code'=>$httpCode);
 		write_log("[CURL] ".$curlInfo['url'].";$errorMessage;");
 	}
+	// write_log("[CURL] ".$curlInfo['url']."; code=$httpCode;".curl_error($curl).";".get_caller_msg(),'test');
 	if(GLOBAL_DEBUG){
 		$response = strlen($curlResult) > 1000 ? substr($curlResult,0,1000).'...':$curlResult;
 		write_log("[CURL] code=".$httpCode.';'.$curlInfo['url'].";$errorMessage \n".$response,'curl');
@@ -336,7 +384,8 @@ function url_request($url,$method='GET',$data=false,$headers=false,$options=fals
 			if($method == 'PUT'){
 				curl_setopt($ch, CURLOPT_PUT,1);
 				curl_setopt($ch, CURLOPT_INFILE,@fopen($path,'r'));
-				curl_setopt($ch, CURLOPT_INFILESIZE,@filesize($path));				
+				curl_setopt($ch, CURLOPT_INFILESIZE,@filesize($path));
+				unset($data[$key]); // put通常通过body上传文件;不需要post参数,参数放在url中
 			}
 		}
 	}
@@ -401,7 +450,7 @@ function url_request($url,$method='GET',$data=false,$headers=false,$options=fals
 			break;
 		case 'DOWNLOAD':
 			//远程下载到指定文件；进度条
-			$fp = fopen ($data.'.'.rand_string(5),'w+');
+			$fp = fopen ($data,'w+');
 			curl_setopt($ch, CURLOPT_HTTPGET,1);
 			curl_setopt($ch, CURLOPT_HEADER,0);//不输出头
 			curl_setopt($ch, CURLOPT_FILE, $fp);
@@ -419,7 +468,7 @@ function url_request($url,$method='GET',$data=false,$headers=false,$options=fals
 		case 'DELETE':
 		case 'PUT':
 			curl_setopt($ch, CURLOPT_CUSTOMREQUEST,$method);
-			curl_setopt($ch, CURLOPT_POSTFIELDS,$data);
+			if($data){curl_setopt($ch, CURLOPT_POSTFIELDS,$data);}
 			break;
 		default:break;
 	}
@@ -664,7 +713,11 @@ function url_header($url){
 		}
 		if(!$name) $name = date("mdHi");
 		if(!strstr($name,'.')){ //没有扩展名,自动追加;
-			$ext  = get_file_ext_by_mime($header['content-type']);
+			$contentType = $header['content-type']; // location ;跳转情况;
+			if(is_array($contentType)){
+				$contentType = $contentType[count($contentType)-1];
+			}
+			$ext  = get_file_ext_by_mime($contentType);
 			$name .= '.'.$ext;
 		}
 	}
@@ -1226,7 +1279,12 @@ function mime_array(){
 		"jfif" => "image/pipeg",
 		"jpg" => "image/jpeg",
 		"jpeg" => "image/jpeg",
-		"jpe" => "image/jpeg",
+		"jpe"  => "image/jpeg",
+		"heic" => "image/heic",
+		"webp" => "image/webp",
+		"cur"  => "image/x-icon",
+		"apng" => "image/apng",
+		"avif" => "image/avif",
 		"js" => "application/javascript",
 		"json" => "application/json",
 		"latex" => "application/x-latex",

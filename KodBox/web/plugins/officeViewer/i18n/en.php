@@ -26,12 +26,12 @@ return array(
 	"officeViewer.main.invalidExt"				=> "Invalid file format",
 
 	"officeViewer.webOffice.name"				=> "Auto Parsing",
-	'officeViewer.webOffice.desc'				=> "When you select [Auto Parsing], it will be opened in sequence (automatically switch when the opening method is invalid);<br/>If you want to have a unified parsing style or support more formats, you can choose other opening methods.",
+	'officeViewer.webOffice.desc'				=> "When [Auto Parsing] is selected, if the current method does not support analysis, it will automatically switch to the next method;<br/>If you want to unify the analysis style or support more formats, you can choose one of the other opening methods.",
 
 	"officeViewer.libreOffice.desc" 			=> "<div style='margin-top:3px;'>Through LibreOffice on the server, convert the file to pdf format to achieve file preview.</div>",
 	"officeViewer.libreOffice.checkError"		=> "Libreoffice call failed. Check whether the software is installed or whether you have execution permission.",
 	"officeViewer.libreOffice.sofficeError"		=> "Libreoffice service exception. Please check and try again.",
-	"officeViewer.libreOffice.convertError"		=> "File convert failed. Please check whether the service is normal.",
+	"officeViewer.libreOffice.convertError"		=> "The conversion failed. Please check whether the file or Office service is normal.",
 	"officeViewer.libreOffice.execDisabled"		=> "[shell_exec] function is disabled, turn it on and try again.",
 	"officeViewer.libreOffice.path"				=> "Path to LibreOffice",
 	"officeViewer.libreOffice.pathDesc"			=> "<br/>
@@ -51,7 +51,7 @@ return array(
 
 
 	'officeViewer.yzOffice.name' 				=> "yozo Office",
-	'officeViewer.yzOffice.desc' 				=> "Parse the file through Yongzhong office service (you need to upload it to its server first) to realize file preview.<br><code style='color:#c7254e'>The server needs to be able to access the external network </code>",
+	'officeViewer.yzOffice.desc' 				=> "Parse the file through Yongzhong office service (the file will be uploaded to its server) to realize file preview.<br><code style='color:#c7254e'>The server needs to be able to access the external network </code>",
 	'officeViewer.yzOffice.transfer' 			=> "1.In data transmission......",
 	'officeViewer.yzOffice.converting'			=> '2.File conversion, please wait a moment...',
 	'officeViewer.yzOffice.uploadError' 		=> "Upload failed. Please check PHP execution timeout!",

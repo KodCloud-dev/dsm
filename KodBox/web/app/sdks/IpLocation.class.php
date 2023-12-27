@@ -6,6 +6,7 @@
  */
 class IpLocation {
 	public static function get($ip){
+		if(!$ip) return LNG('common.unknow');
 		static $obj;
 		if(!$obj){
 			$path = dirname(__FILE__).'/Ip2Region/';
@@ -23,8 +24,9 @@ class IpLocation {
 		$replaceTo   = array('','',' ','省');
 		$lang = I18n::getType();
 		if( strstr($lang,'zh') ){
+			$replace = $lang == 'zh-TW' ? '內網IP' : '内网IP';
 			$address = str_replace($replaceFrom,$replaceTo,$address);
-			$address = str_replace('内网IP 内网IP','内网IP',$address);
+			$address = str_replace('内网IP 内网IP',$replace,$address);
 			return $address;
 		}
 

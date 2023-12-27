@@ -25,6 +25,7 @@ class PathDriverWebdav extends PathDriverBase {
 		$this->davServerKod 	= false;
 		$this->uploadChunkSize  = 1024*1024*5; 	// patch分片上传时; 分片大小;
 		
+		if(!is_string($config['dav'])){return;}
 		$davSupport = $config['dav'] ? $config['dav']:'';
 		$davSupport = explode(',',$davSupport);
 		foreach($davSupport as $key => $type){$davSupport[$key] = trim($type);}
@@ -88,7 +89,20 @@ class PathDriverWebdav extends PathDriverBase {
 		if($count){return $children;}
 		return $isFolder ? $children['hasFolder'] : $children['hasFile'];
 	}
-	public function listAll($path) {
+	public function listAll($path){
+		// 优先处理按kod进行尝试请求;
+		$data = $this->dav->propfind($path,'0','X-DAV-ACTION: kodListAll');
+		$current = $this->_pathInfoParse(_get($data,'data.response',false));
+		if($current && isset($current['listAllChildren'])){
+			foreach ($current['listAllChildren'] as &$item){
+				$arr = explode('/',trim($item['path'],'/'));
+				$pathShow = implode('/',array_slice($arr,1)).($item['folder'] ? '/':'');
+				$item["path"] = rtrim($current['path'],'/').'/'.$pathShow; // 都使用包含上层的方式,兼容1.45前版本;
+				unset($item["filePath"]);
+			};unset($item);
+			return $current['listAllChildren'];
+		}
+		
 		$result = array();
 		$this->listAllMake($path,$result);
 		return $result;
@@ -300,16 +314,17 @@ class PathDriverWebdav extends PathDriverBase {
 	private function _pathInfo($path,$cacheInfo=false){
 		if(!$this->pathCheck($path)) return false;
 		$key = trim($path,'/');
-		if($cacheInfo){$this->infoCache[$key] = $cacheInfo;return;}
-		if(isset($this->infoCache[$key])) return $this->infoCache[$key];
+		if($cacheInfo){self::$infoCache[$key] = $cacheInfo;return;}
+		if(isset(self::$infoCache[$key])) return self::$infoCache[$key];
 		
 		$data = $this->listPath($path);
 		$pathInfo = $data ? $data['current']:false;
-		if($pathInfo){$this->infoCache[$key] = $pathInfo;}
+		if($pathInfo){self::$infoCache[$key] = $pathInfo;}
 		return $pathInfo;
 	}
 	// 文件属性; name/path/type/size/createTime/modifyTime/
 	private function _pathInfoParse($item){
+		if(!$item || !isset($item['href'])){return array();}
 		$path 	= $this->dav->uriToPath($item['href']);
 		$info   = array('name'=>get_path_this($path),'path'=>$path,'type'=>'folder');
 		$prop   = _get($item,'propstat.prop',array());

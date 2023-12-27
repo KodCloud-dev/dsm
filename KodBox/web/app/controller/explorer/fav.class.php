@@ -18,10 +18,19 @@ class explorerFav extends Controller{
 	public function get() {
 		$pageNum = $GLOBALS['in']['pageNum'];$GLOBALS['in']['pageNum'] = 2000;//分页处理;
 		$list = $this->model->listView();
+		
+		// 收藏协作分享内容;
+		foreach($list as $key => $item) {
+			$pathParse = KodIO::parse($item['path']);
+			if($pathParse['type'] == KodIO::KOD_SHARE_ITEM){
+				$infoItem = IO::info($item['path']);
+				$infoItem = is_array($infoItem) ? $infoItem :array();
+				$list[$key] = array_merge($item,$infoItem);	
+			}
+		}
+		
 		$GLOBALS['in']['pageNum'] = $pageNum ? $pageNum:null;
-		$list = $this->_checkExists($list);
-		// pr($list);exit;
-		return $list;
+		return $this->_checkExists($list);
 	}
 	
 	private function _checkExists($list){
@@ -52,41 +61,28 @@ class explorerFav extends Controller{
 				if($item['type'] == 'file'){$info['type'] = 'file';}
 				unset($info['name']);
 				$item = array_merge($item,$info);
-				if($item['type'] == 'file'){
-					$item['ext'] = get_path_ext($item['name']);
-				}
+				if($item['type'] == 'file'){$item['ext'] = get_path_ext($item['name']);}
 			}
 		};unset($item);
 		return $list;
 	}
 	public function favAppendItem(&$item){
-		static $favList = false;
-		if($favList === false){
-			$favList = $this->model->listData();
-			$favList = array_to_keyvalue($favList,'path');
+		static $listPathMap = false;
+		if($listPathMap === false){
+			$listPathMap = $this->model->listData();
+			$listPathMap = array_to_keyvalue($listPathMap,'path');
 		}
 		
-		if(!isset($item['sourceInfo'])){
-			$item['sourceInfo'] = array();
-		}
-		$path 	 = $item['path'];$favItem = false;
-		$favItem = isset($favList[$path]) ? $favList[$path]:$favItem;
-		if(!$favItem){
-			$path 	 = rtrim($item['path'],'/');
-			$favItem = isset($favList[$path]) ? $favList[$path]:$favItem;
-		}
-		if(!$favItem){
-			$path 	 = rtrim($item['path'],'/').'/';
-			$favItem = isset($favList[$path]) ? $favList[$path]:$favItem;
-		}
-		
-		if( $favItem ){
+		if(!isset($item['sourceInfo'])){$item['sourceInfo'] = array();}
+		$path 	 = $item['path'];$path1 = rtrim($item['path'],'/');$path2 = rtrim($item['path'],'/').'/';
+		$findItem = isset($listPathMap[$path]) ? $listPathMap[$path]:false;
+		$findItem = (!$findItem && isset($listPathMap[$path1])) ? $listPathMap[$path1]:$findItem;
+		$findItem = (!$findItem && isset($listPathMap[$path2])) ? $listPathMap[$path2]:$findItem;
+		if($findItem){
 			$item['sourceInfo']['isFav'] = 1;
-			$item['sourceInfo']['favName'] = $favItem['name'];
-			$item['sourceInfo']['favID'] = $favItem['id'];
+			$item['sourceInfo']['favName'] = $findItem['name'];
+			$item['sourceInfo']['favID'] = $findItem['id'];
 		}
-		// $item['$favItem'] = $favItem;		
-		// 收藏文件;
 		if($item['type'] == 'file' && !$item['ext']){
 			$item['ext'] = get_path_ext($item['name']);
 		}
@@ -115,6 +111,7 @@ class explorerFav extends Controller{
 		if($pathInfo['type'] == KodIO::KOD_SOURCE){
 			$data['type'] = 'source';
 			$data['path'] = $pathInfo['id'];
+			Action('explorer.listSafe')->authCheckAllow($data['path']);
 		}
 		$res = $this->model->addFav($data['path'],$data['name'],$data['type']);
 		$msg = !!$res ? LNG('explorer.addFavSuccess') : LNG('explorer.pathHasFaved');
@@ -128,10 +125,12 @@ class explorerFav extends Controller{
 		$data = Input::getArray(array(
 			"name"		=> array("check"=>"require"),
 			"newName"	=> array("check"=>"require"),
+			"path"		=> array("check"=>"require","default"=>false),
 		));
 		$res = $this->model->rename($data['name'],$data['newName']);
 		$msg = !!$res ? LNG('explorer.success') : LNG('explorer.repeatError');
-		show_json($msg,!!$res);
+		$info = $res && $data['path'] ? $data['path']:false;
+		show_json($msg,!!$res,$data['path']);
 	}
 	
 	/**

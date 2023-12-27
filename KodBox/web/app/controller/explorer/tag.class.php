@@ -80,14 +80,65 @@ class explorerTag extends Controller{
 		$result = Model("Source")->listUserTag($tags);
 		$tagInfo= $this->tagsInfo($tags);
 		$tagInfo['pathAddress'] = array(
-			array("name"=> LNG('common.tag'),"path"=>'{block:fileTag}/'),
+			array("name"=> LNG('explorer.userTag.title'),"path"=>'{block:fileTag}/'),
 			array("name"=> $tagInfo['name'],"path"=>$this->in['path']),
 		);
 		$tagInfo['pathDesc'] = LNG('explorer.tag.pathDesc');
 		if(!$result){$result = array("fileList"=>array(),'folderList'=>array());}
 		$result['currentFieldAdd'] = $tagInfo;
+		$result['fileList']   = $this->_checkExists($result['fileList']);
+		$result['folderList'] = $this->_checkExists($result['folderList']);
 		return $result;
 	}
+	
+	// 自动清理不存在的内容(仅限物理路径, 其他io路径由于比较耗时暂不处理,手动处理)
+	private function _checkExists($list){
+		if(!$list){return array();}
+		foreach($list as $key => &$item){
+			if(substr($item['path'],0,1) == '{'){continue;} // 仅处理物理路径;
+			if(!file_exists($item['path'])){
+				// $item['exists'] = false;
+				unset($list[$key]);
+				$this->modelSource->removeBySource($item['path']);
+			}
+		};unset($item);
+		return $list;
+	}
+	
+	// 普通路径追加标签信息; source路径会已经自动添加;
+	public function tagAppendItem(&$item){
+		if(isset($item['sourceInfo']['tagInfo'])){return $item;}
+		
+		static $listPathMap = false;
+		static $tagInfoArr  = false;
+		if($listPathMap === false){ // 缓存处理;
+			$this->modelSource->cacheFunctionClear('listData',USER_ID);
+			$listPathMap = $this->modelSource->listData(); // model查询缓存;			
+			$listPathMap = array_to_keyvalue_group($listPathMap,'path','tagID');
+			$tagInfoArr  = $this->model->listData();
+			$tagInfoArr  = array_to_keyvalue($tagInfoArr,'id');
+		}
+		if(!$tagInfoArr || !$listPathMap){return $item;}
+		
+		$item['sourceInfo']['tagInfo'] = 0;
+		$path 	 = $item['path'];$path1 = rtrim($item['path'],'/');$path2 = rtrim($item['path'],'/').'/';
+		$findItem = isset($listPathMap[$path]) ? $listPathMap[$path]:false;
+		$findItem = (!$findItem && isset($listPathMap[$path1])) ? $listPathMap[$path1]:$findItem;
+		$findItem = (!$findItem && isset($listPathMap[$path2])) ? $listPathMap[$path2]:$findItem;
+		if(!$findItem){return $item;}
+		
+		$item['sourceInfo']['tagInfo'] = array();
+		foreach ($findItem as $tagID) {
+			$item['sourceInfo']['tagInfo'][] = array(
+				"tagID"	=> $tagInfoArr[$tagID]['id'],
+				"name"	=> $tagInfoArr[$tagID]['name'],
+				"style"	=> $tagInfoArr[$tagID]['style'],
+			);
+		}
+		return $item;
+	}
+	
+	
 	private function tagsInfo($tags){
 		$info = false;
 		$styleDefault = 'tag-label label label-blue-normal';
@@ -188,13 +239,18 @@ class explorerTag extends Controller{
 			"tagID"	=> array("check"=>"int"),
 			"files"	=> array("check"=>"require"),
 		));
+		
+		$data['files'] = str_replace("__*@*__",',',$data['files']);
 		$files = explode(',',$data['files']);
 		if(!$files){
 			show_json(LNG('explorer.error'),false);
 		}
 		$res = $this->modelSource->removeFromTag($files,$data['tagID']);
-		$msg = $res ? LNG('explorer.success') : LNG('explorer.error');
-		show_json($msg,!!$res);
+		if(!$res && count($files) == 1){ // 部分老数据处理; 文件夹统一去除结尾斜杠;
+			$files[0] = rtrim($files[0],'/');
+			$res = $this->modelSource->removeFromTag($files,$data['tagID']);
+		}
+		show_json(LNG('explorer.success'),true);
 	}
 	
 	//添加文档到tag;
@@ -203,6 +259,7 @@ class explorerTag extends Controller{
 			"tagID"	=> array("check"=>"int"),
 			"files"	=> array("check"=>"require"),
 		));
+		$data['files'] = str_replace("__*@*__",',',$data['files']);
 		$files = explode(',',$data['files']);
 		if(!$files){
 			show_json(LNG('explorer.error'),false);
@@ -211,8 +268,6 @@ class explorerTag extends Controller{
 			$res = $this->fileAddTag($file,$data['tagID']);
 		}
 		show_json(LNG('explorer.success'),true);
-		// $msg = $res ? LNG('explorer.success') : LNG('explorer.repeatError');
-		// show_json($msg,!!$res);
 	}
 	
 	// 标签包含内容数量上限控制;
@@ -221,6 +276,7 @@ class explorerTag extends Controller{
 		if( $count > $GLOBALS['config']['systemOption']['tagContainMax'] ){
 			show_json(LNG("common.numberLimit"),false);
 		}
+		Action('explorer.listSafe')->authCheckAllow($file);
 		return $this->modelSource->addToTag($file,$tagID);
 	}
 	

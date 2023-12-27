@@ -38,6 +38,7 @@ $(function(){
                 return false;
             }
         });
+        $('body.weboffice-page').addClass('loaded');
     }
 
     // 读取文件内容，生成luckysheet配置参数——导入
@@ -84,8 +85,7 @@ $(function(){
         try{
             callback(data);
         }catch(err){
-            console.error(err);
-            page.showTips('文件损坏，或包含不支持的内容格式！');
+            webOfficeAutoChange(err);
         }
     }
 });

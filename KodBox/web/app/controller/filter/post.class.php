@@ -22,25 +22,35 @@ class filterPost extends Controller{
 	// 一律post请求; get请求白名单; 插件处理;
 	public function check(){
 		if( Model('SystemOption')->get('csrfProtect') != '1') return;
-		$ua = strtolower($_SERVER ['HTTP_USER_AGENT']);
+		$ua = strtolower($_SERVER['HTTP_USER_AGENT']);
 		if( strstr($ua,'kodbox') || 
 			strstr($ua,'okhttp') ||
 			strstr($ua,'kodcloud')
 		){return;}
 
 		// if(GLOBAL_DEBUG) return;
+		$theMod 	= strtolower(MOD);
+		$theST 		= strtolower(ST);
+		$theACT 	= strtolower(ACT);
+		$theAction 	= strtolower(ACTION);
 		$GLOBALS['config']['jsonpAllow'] = false; //全局禁用jsonp
-		if(strtolower(MOD) == 'plugin'){
+		if($theMod == 'plugin'){
 			$GLOBALS['config']['jsonpAllow'] = true;
 			return; //插件内部自行处理;
+		}
+		
+		// webdav 挂载kod; 当前开启了csrf防护,直接接口上传时不处理;
+		if($theACT == 'fileupload'){
+			if($_SERVER['REQUEST_METHOD'] == 'OPTIONS'){exit;}
+			if(isset($_POST['clientFrom']) && $_POST['clientFrom'] =='webdav-kodbox'){return;}
 		}
 
 		$allowGetArr = array(
 			'explorer.fileview'	=> 'index',
 			'explorer.history'	=> 'fileOut',
 			'explorer.index'	=> 'fileOut,fileDownload,fileOutBy,fileDownloadRemove',
-			'explorer.share'	=> 'file,fileOut,fileDownload,zipDownload,fileDownloadRemove',
-			'admin.setting'		=> 'get,set,server',
+			'explorer.share'	=> 'fileOut,fileDownload,fileOutBy,zipDownload,fileDownloadRemove,file',
+			'admin.setting'		=> 'get,server',
 			'admin.repair'		=> '*',
 
 			'install.index'	 	=> '*',
@@ -51,17 +61,36 @@ class filterPost extends Controller{
 			'sitemap'			=> '*',
 		);
 		$allowGet  = false;
-		$ST_MOD = strtolower(MOD.'.'.ST);
+		$ST_MOD = $theMod.'.'.$theST;
 		if(isset($allowGetArr[$ST_MOD])){
 			$methods = strtolower($allowGetArr[$ST_MOD]);
 			$methodArr = explode(',',$methods);
-			if($methods == '*' || in_array(strtolower(ACT),$methodArr)){
+			if($methods == '*' || in_array($theACT,$methodArr)){
 				$allowGet = true;
 			}
 		}
 		if(isset($allowGetArr[MOD])){$allowGet = true;}
 
 		//必须使用POST的请求:统一检测csrfToken;
+		if($allowGet) return;
+		
+		// 无需登录的接口不处理;
+		$authNotNeedLogin = $this->config['authNotNeedLogin'];
+		foreach ($authNotNeedLogin as &$val) {
+			$val = strtolower($val);
+		};unset($val);
+		if(in_array($theAction,$authNotNeedLogin)) return;
+		foreach ($authNotNeedLogin as $value) {
+			$item = explode('.',$value); //MOD,ST,ACT
+			if( count($item) == 2 && 
+				$item[0] === $theMod && $item[1] === '*'){
+				$allowGet = true;break;
+			}
+			if( count($item) == 3 && 
+				$item[0] === $theMod && $item[1] === $theST  &&$item[2] === '*'){
+				$allowGet = true;break;
+			}
+		}
 		if($allowGet) return;
 		
 		$this->checkCsrfToken();
@@ -74,7 +103,12 @@ class filterPost extends Controller{
 	// csrfToken检测; 允许UA为APP,PC客户端的情况;
 	private function checkCsrfToken(){
 		if(isset($_REQUEST['accessToken'])) return;
-		if($this->in['CSRF_TOKEN'] != Cookie::get('CSRF_TOKEN')){
+		if(!$this->in['CSRF_TOKEN'] || $this->in['CSRF_TOKEN'] != Cookie::get('CSRF_TOKEN')){
+			$className	= substr(ACTION,0,strrpos(ACTION,'.'));
+			if(!Action($className)){header('HTTP/1.1 404 Not Found');exit;}
+
+			//write_log(array('CSRF_TOKEN error',$this->in,$_COOKIE,$_SERVER['HTTP_USER_AGENT']),'error');
+			Cookie::remove('CSRF_TOKEN');// 部分手机浏览器异常情况(ios-夸克浏览器: 打开zip内视频,关闭后拉取文件列表)
 			return show_json('CSRF_TOKEN error!',false);
 		}
 	}

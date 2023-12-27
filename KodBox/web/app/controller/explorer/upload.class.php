@@ -38,17 +38,24 @@ class explorerUpload extends Controller{
 		$this->authorizeCheck();
 		$uploader = new Uploader();
 		$savePath = $this->in['path'];
-		if ( $this->in['fullPath'] ) {//带文件夹的上传
+		if(!IO::exist($savePath)) show_json(LNG('explorer.upload.errorPath'),false);
+		if( $this->in['fullPath']){//带文件夹的上传
 			$fullPath = KodIO::clear($this->in['fullPath']);
 			$fullPath = $this->pathAllowReplace($fullPath);
 			$fullPath = get_path_father($fullPath);
 			$savePath = IO::mkdir(rtrim($savePath,'/').'/'.$fullPath);
 		}
-		$uploader->fileName = $this->pathAllowReplace($uploader->fileName);
-		$savePath = rtrim($savePath,'/').'/'.$uploader->fileName;
 		$repeat = Model('UserOption')->get('fileRepeat');
 		$repeat = isset($this->in['fileRepeat']) ? $this->in['fileRepeat'] : $repeat;
 		$repeat = isset($this->in['repeatType']) ? $this->in['repeatType'] : $repeat; // 向下兼容pc客户端
+		
+		// 上传前同名文件处理(默认覆盖; [覆盖,重命名,跳过])
+		$uploader->fileName = $this->pathAllowReplace($uploader->fileName);
+		if($repeat == REPEAT_RENAME){
+			$uploader->fileName = IO::fileNameAuto($savePath,$uploader->fileName,$repeat);
+			if(!$uploader->fileName){show_json('skiped',true);}
+		}
+		$savePath = rtrim($savePath,'/').'/'.$uploader->fileName;
 		
 		// 文件保存; 必须已经先存在;
 		if($this->in['fileSave'] == '1'){
@@ -134,9 +141,13 @@ class explorerUpload extends Controller{
 			$file = array('hashSimple' => null, 'hashMd5' => null);	// 非绑定数据库存储不检查秒传
 		}
 		
+		if(!$file['hashMd5']){$file['hashSimple'] = null;}
+		$checkChunkArray = array();
+		if($hashSimple){$checkChunkArray = $uploader->checkChunk();} // 断点续传保持处理;
+		
 		$default  = KodIO::defaultDriver();
 		$infoData = array(
-			"checkChunkArray"	=> $uploader->checkChunk(),
+			"checkChunkArray"	=> $checkChunkArray,
 			"checkFileHash"		=> array(
 				"hashSimple"=>$file['hashSimple'],
 				"hashMd5"	=>$file['hashMd5']
@@ -147,8 +158,9 @@ class explorerUpload extends Controller{
 			"kodDriverType"		=> $default['driver'],
 		);
 		$linkInfo = &$infoData['uploadLinkInfo'];
-		if(isset($linkInfo['host'])){
+		if(isset($linkInfo['host'])){ // 前端上传时,自适应处理(避免http,https混合时浏览器拦截问题; )
 		    $linkInfo['host'] = str_replace("http://",'//',$linkInfo['host']);
+			// $linkInfo['host'] = str_replace("https://",'//',$linkInfo['host']);	// 存储只限https访问时去掉会有异常
 		}
 		
 		// 保留参数部分; kod挂载kod的webdav前端上传;
@@ -240,6 +252,7 @@ class explorerUpload extends Controller{
 	 * 小于10M的文件不处理;
 	 */
 	private function serverDownloadHashCheck($url,$header,$savePath,$filename,$uuid){
+		return;// 暂时关闭该特性;
 		if($header['length'] < 10 * 1024*1024) return false;
 		$driver = new PathDriverUrl();
 		$fileHash = $driver->hashSimple($url,$header); // 50个请求;8s左右;

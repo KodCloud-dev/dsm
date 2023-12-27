@@ -33,12 +33,12 @@ class explorerIndex extends Controller{
 	private function itemInfo($item){
 		$path = $item['path'];
 		$type = _get($item,'type');
-		if($type == 'full'){
-			$result = IO::infoFull($path);
+		if($this->in['getChildren'] == '1'){
+			$result = IO::infoWithChildren($path);
 		}else if($type == 'simple'){
 			$result = IO::info($path);
 		}else{
-			$result = IO::infoWithChildren($path);
+			$result = IO::infoFull($path);
 		}
 		if(!$result) return false;
 		// $canLink = Action('explorer.auth')->fileCanDownload($path);
@@ -51,14 +51,18 @@ class explorerIndex extends Controller{
 		return $result;
 	}
 
+	public  function pathInfoItem($path){
+		$pathInfo = IO::info($path);
+		if(!$pathInfo) return false;
+		return $this->itemInfoMore($pathInfo);
+	}
 	private function itemInfoMore($item){
 		$result  = Model('SourceAuth')->authOwnerApply($item);
 		$showMd5 = Model('SystemOption')->get('showFileMd5') != '0';
 		if($result['type'] != 'file') return $item;
-		if(!$showMd5) return $item;
 		
-		if( !_get($result,'fileInfo.hashMd5') && 
-			($result['size'] <= 200*1024*1024 || _get($this->in,'getMore') )  ){
+		if($showMd5 && !_get($result,'fileInfo.hashMd5') && 
+			($result['size'] <= 100*1024*1024 || _get($this->in,'getMore') || _get($this->in,'getChildren'))  ){
 			$result['hashMd5'] = IO::hashMd5($result['path']);
 		}
 		$result = Action('explorer.list')->pathInfoMore($result);
@@ -72,6 +76,9 @@ class explorerIndex extends Controller{
 
 		if( !Action('explorer.listBlock')->pathEnable('my') ){
 			unset($desktopApps['myComputer']);
+		}
+		if($this->config['settings']['disableDesktopHelp'] == 1){
+			unset($desktopApps['userHelp']);
 		}
 		foreach ($desktopApps as $key => &$item) {
 			if($item['menuType'] == 'menu-default-open'){
@@ -185,49 +192,31 @@ class explorerIndex extends Controller{
 			'clear'	=> array('default'=>0),
 		));
 		if ($data['clear'] != '1') return;
-		// 临时目录不存在
 		if (!IO::exist(IO_PATH_SYSTEM_TEMP)) show_json(LNG('explorer.success'));
-
+		
+		// 文件封面插件缩略图清理
 		$fileInfo = IO::info($data['path']);
-		// 后端缩略图
-		if ($sourceID = IO::fileNameExist(IO_PATH_SYSTEM_TEMP, 'thumb')) {
-			$imageMd5 = _get($fileInfo,'fileInfo.hashMd5',_get($fileInfo,'fileInfo.hashSimple'));
-			if (!$imageMd5) {
-				$imageMd5 = md5("{$fileInfo['name']}_{$fileInfo['path']}_{$fileInfo['size']}");
-			}
-			$thumbPath = KodIO::make($sourceID);
+		$fileThumbInfo = IO::infoFullSimple(IO_PATH_SYSTEM_TEMP . 'plugin/fileThumb');
+		if($fileThumbInfo && isset($fileThumbInfo['path'])) {
+			$fileHash  = KodIO::hashPath($fileInfo);
 			$thumbList = array(250,600,1200,2000,3000,5000);	// 缩略图尺寸
-			// 循环删除各尺寸缩略图
-			foreach ($thumbList as $width) {
-				$imageName = "{$imageMd5}_{$width}.png";
-				if($sourceID = IO::fileNameExist($thumbPath, $imageName)){
-					$imageTemp = KodIO::make($sourceID);
-					IO::remove($imageTemp, false);
-				}
+			foreach ($thumbList as $width){
+				$coverName = "cover_${$fileHash}_${$width}.png";
+				$sourceID  = IO::fileNameExist($fileThumbInfo['path'],$coverName);
+				Cache::remove($coverName);
+				if(!$sourceID){continue;}
+				IO::remove(KodIO::make($sourceID),false);
 			}
 		}
-		// 插件缩略图
-		$plugin = IO_PATH_SYSTEM_TEMP . 'plugin/fileThumb';
-		$pathInfo = IO::infoFull($plugin);
-		if (isset($pathInfo['path'])) {
-			// 缩略图临时文件目录
-			$folderName = _get($fileInfo,'fileInfo.hashSimple');
-			if (!$folderName) {
-				$columns = array($fileInfo['name'], $fileInfo['path'],$fileInfo['size']);
-				if(isset($fileInfo['parentLevel'])) $columns[] = $fileInfo['parentLevel'];
-				$folderName = md5(implode('_', $columns));
-			}
-			// 直接删除目录
-			if($sourceID = IO::fileNameExist($pathInfo['path'], $folderName)){
-				$thumbPath = KodIO::make($sourceID);
-				IO::remove($thumbPath, false);
-			}
-		}
+		
 		// 删除元数据
 		$cacheKey = 'fileInfo.'.md5($fileInfo['path'].'@'.$fileInfo['size'].$fileInfo['modifyTime']);
 		$fileID   = _get($fileInfo,'fileInfo.fileID',_get($fileInfo,'fileID'));
 		Cache::remove($cacheKey);
 		if($fileInfo['sourceID']){Model('Source')->metaSet($fileInfo['sourceID'],'modifyTimeShow',time());}
+		if(_get($fileInfo,'metaInfo.user_sourceCover')){ // 清空缩略图,包含清空文件设定的封面;
+			Model('Source')->metaSet($fileInfo['sourceID'],'user_sourceCover');
+		}
 		if($fileID){Model("File")->metaSet($fileID,'fileInfoMore',null);};
 		show_json(LNG('explorer.success'));
 	}
@@ -323,10 +312,13 @@ class explorerIndex extends Controller{
 	public function pathAllowCheck($path){
 		$notAllow = array('/', '\\', ':', '*', '?', '"', '<', '>', '|');
 		$parse = KodIO::parse($path);
-		if($parse['pathBase']){
-			$path = $parse['param'];
-		}
-		$name = get_path_this($path);
+		if($parse['pathBase']){$path = $parse['param'];}
+		
+		$name = trim(get_path_this($path));
+		if(!$name){return;} // 允许纯为空情况; 新建文件夹: {source:xxx}/ 允许该情况;
+		$name = preg_replace_callback('/./u',function($match){return strlen($match[0]) >= 4 ? '':$match[0];},$name);
+		if(!$name){show_json(LNG('explorer.charNoSupport').'emoji',false);} // 不允许纯emoji表情; 新建后文件名不显示;
+		
 		$checkName = str_replace($notAllow,'_',$name);
 		if($name != $checkName){
 		    show_json(LNG('explorer.charNoSupport').implode(',',$notAllow),false);
@@ -340,7 +332,7 @@ class explorerIndex extends Controller{
 	}
 	
 	public function mkfile(){
-		$this->pathAllowCheck($this->in['path'],true);
+		$this->pathAllowCheck($this->in['path']);
 		$info = IO::info($this->in['path']);
 		if($info && $info['type'] == 'file'){ //父目录为文件;
 			show_json(LNG('explorer.success'),true,IO::pathFather($info['path']));
@@ -519,6 +511,7 @@ class explorerIndex extends Controller{
 				if($item['parentInfo']){
 					$data['list'][$i]['parentInfo'] = $userActon->_shareItemeParse($item['parentInfo'],$shareInfo);
 				}
+				if(!is_array($item['desc'])){continue;}
 				if(is_array($item['desc']['from'])){
 					$data['list'][$i]['desc']['from'] = $userActon->_shareItemeParse($item['desc']['from'],$shareInfo);
 				}
@@ -562,30 +555,47 @@ class explorerIndex extends Controller{
 		$repeat = Model('UserOption')->get('fileRepeat');
 		$repeat = !empty($this->in['fileRepeat']) ? $this->in['fileRepeat'] :$repeat;
 		$result = array();$errorList = array();
+		
+		// 所有操作中,是否有重名覆盖的情况(文件,文件夹都算)
+		$infoMore = array('hasExistAll'=>false,'pathTo'=>$pathTo,'listFrom'=>$list,'listTo'=>array());
 		for ($i=0; $i < count($list); $i++) {
 			$thePath = $list[$i]['path'];
-			if ($copyType == 'copy') {
+			$repeatType = $repeat;
+			$ioInfo 	= IO::info($thePath);
+			$driverTo 	= IO::init($this->in['path']);
+			$hasExists  = $driverTo->fileNameExist($driverTo->path,$ioInfo['name']);
+
+			if($copyType == 'copy') {
 				//复制到自己所在目录,则为克隆;
 				$driver = IO::init($thePath);
 				$father = $driver->getPathOuter($driver->pathFather($driver->path));
-				$repeatType = $repeat;
 				if(KodIO::clear($father) == KodIO::clear($pathTo) ){
 					$repeatType = REPEAT_RENAME_FOLDER;
 				}
 				$itemResult = IO::copy($thePath,$pathTo,$repeatType);
 			}else{
-				$itemResult = IO::move($thePath,$pathTo,$repeat);
+				$itemResult = IO::move($thePath,$pathTo,$repeatType);
+			}
+			
+			// 复制/移动时; 所有内容是否存在文件夹已存在覆盖,文件已存在覆盖的情况; 存在时前端不支持撤销操作;
+			if($hasExists){
+				if($ioInfo['type'] == 'file' && ($repeatType != REPEAT_RENAME && $repeatType != REPEAT_RENAME_FOLDER)){
+					$infoMore['hasExistAll'] = true;
+				}
+				if($ioInfo['type'] == 'folder' && $repeatType != REPEAT_RENAME_FOLDER){
+					$infoMore['hasExistAll'] = true;
+				}
 			}
 			if(!$itemResult){$errorList[] = $thePath;continue;}
 			$result[] = $itemResult;
+			$infoMore['listTo'][] = array('path'=>$itemResult);
 		}
-		
 		$code = $result ? true:false;
 		$msg  = $copyType == 'copy'?LNG('explorer.pastSuccess'):LNG('explorer.cutePastSuccess');
 		
 		if(count($result) == 0){$msg = LNG('explorer.error');}
 		if($errorList){$msg .= "(".count($errorList)." error)\n".IO::getLastError();}
-		show_json($msg,$code,$result);
+		show_json($msg,$code,$result,$infoMore);
 	}
 	
 	// 外链分享复制;
@@ -600,7 +610,7 @@ class explorerIndex extends Controller{
 			if(!$info){
 				show_json($GLOBALS['explorer.sharePathInfo.error'], false);
 			}
-			if($info['option'] && $this->share['options']['notDownload'] == '1'){
+			if($info['option'] && $info['option']['notDownload'] == '1'){
 				show_json(LNG('explorer.share.noDownTips'), false);
 			}
 			$list[$i]['path'] = $info['path'];
@@ -636,17 +646,7 @@ class explorerIndex extends Controller{
 		    del_dir($dir);
 		}
 	}
-
-	private function tmpZipName($dataArr){
-		$files = array();
-		foreach($dataArr as $item){
-			$info	 = IO::info($item['path']);
-			$files[] = IOArchive::tmpFileName($info);
-		}
-		sort($files);
-		return md5(json_encode($files));
-	}
-
+	
 	public function clearCache(){
 		$maxTime = 3600*24;
 		$list = IO::listPath(TEMP_FILES);
@@ -668,18 +668,19 @@ class explorerIndex extends Controller{
 	public function zipDownload(){	
 		$dataArr  = json_decode($this->in['dataArr'],true);
 		// 前端压缩处理;
-		if($this->in['zipClient'] == '1'){$this->zipDownloadClient($dataArr);return;}
+		if($this->in['zipClient'] == '1'){
+			return show_json($this->zipDownloadClient($dataArr),true);
+		}
 		
 		ignore_timeout();
-		$zipFolder = $this->tmpZipName($dataArr);
-		$zipCache  = TEMP_FILES;mk_dir($zipCache);
-
-		$zipPath = Cache::get($zipFolder);
+		$zipFolder = md5(json_encode(sort(array_to_keyvalue($dataArr,'','path'))));
+		$zipCache  = TEMP_FILES.$zipFolder.'/';
+		mk_dir($zipCache);file_put_contents($zipCache.'index.html','');
+		$zipPath   = Cache::get($zipFolder);
 		if($zipPath && IO::exist($zipPath) ){
 			return $this->zipDownloadStart($zipPath);
 		}
-
-		$zipPath = $this->zip($zipCache.$zipFolder . '/');
+		$zipPath = $this->zip($zipCache);
 		Cache::set($zipFolder, $zipPath, 3600*6);
 		$this->zipDownloadStart($zipPath);
 	}
@@ -687,8 +688,6 @@ class explorerIndex extends Controller{
 		if(isset($this->in['disableCache']) && $this->in['disableCache'] == '1'){
 			if(!$zipPath || !IO::exist($zipPath)) return;
 			IO::fileOut($zipPath,true);
-			// $dir = get_path_father($zipPath);
-			// if(strstr($dir,TEMP_FILES)){del_dir($dir);}
 			return;
 		}
 		show_json(LNG('explorer.zipSuccess'),true,$this->pathCrypt($zipPath));
@@ -700,7 +699,7 @@ class explorerIndex extends Controller{
 		return $en ? Mcrypt::encode($path,$pass) : Mcrypt::decode($path,$pass);
 	}
 	
-	private function zipDownloadClient($dataArr){
+	public function zipDownloadClient($dataArr){
 		$result  = array();
 		foreach($dataArr as $itemZip){
 			$pathInfo   = IO::info($itemZip['path']);
@@ -710,14 +709,14 @@ class explorerIndex extends Controller{
 
 			if(!$isFolder){
 				$itemZipOut['filePath'] = $itemZip['path'];
-				$itemZipOut['size'] = $pathInfo['size'];				
+				$itemZipOut['size'] = $pathInfo['size'];
 				$result[] = $itemZipOut;continue;
 			}
 			$result[] = $itemZipOut;
-			$children = IO::listAllSimple($itemZip['path']);
+			$children = IO::listAllSimple($itemZip['path'],1);
 			$result   = array_merge($result, $children);
 		}
-		show_json($result,true);
+		return $result;
 	}
 
 	/**
@@ -760,11 +759,11 @@ class explorerIndex extends Controller{
 		}
 		return $task;
 	}
-	private function taskUnzip($data){
+	private function taskUnzip($path){
 		$defaultID = 'unzip-'.USER_ID.'-'.rand_string(8);
 		$taskID = $this->in['longTaskID'] ? $this->in['longTaskID']:$defaultID;
 		$task = new TaskUnzip($taskID,'zip');
-		$task->addFile($data['path']);
+		$task->addFile($path);
 	}
 	
 	/**
@@ -780,9 +779,9 @@ class explorerIndex extends Controller{
 		
 		$repeat = Model('UserOption')->get('fileRepeat');
 		$repeat = !empty($this->in['fileRepeat']) ? $this->in['fileRepeat'] :$repeat;
-		$this->taskUnzip($data);
-		IOArchive::unzip($data,$repeat);
-		show_json(LNG('explorer.unzipSuccess'));
+		$this->taskUnzip($data['path']);
+		$result = IOArchive::unzip($data['path'],$data['pathTo'],$data['unzipPart'],$repeat);
+		show_json($result ? LNG('explorer.unzipSuccess'):LNG('explorer.error'),!!$result,$result);
 	}
 
 	/**
@@ -793,10 +792,10 @@ class explorerIndex extends Controller{
 			'path' => array('check' => 'require'),
 			'index' => array('check' => 'require', 'default' => '-1'),
 			'download' => array('check' => 'require', 'default' => false),
-			'name' => array('check' => 'require', 'default' => ''),
 		));
-		$this->taskUnzip($data);
+		$this->taskUnzip($data['path']);
 		$list = IOArchive::unzipList($data);
+		$this->updateLastOpen($data['path']);
 		show_json($list);
 	}
 
@@ -808,17 +807,18 @@ class explorerIndex extends Controller{
 	public function fileOut(){
 		$path = $this->in['path'];
 		if(!$path) return; 
-		$isDownload = isset($this->in['download']) && $this->in['download'] == 1;
+		$isDownload   = isset($this->in['download']) && $this->in['download'] == 1;
+		$downFilename = !empty($this->in['downFilename']) ? $this->in['downFilename'] : false;
 		if($isDownload && !Action('user.authRole')->authCanDownload()){
 			show_json(LNG('explorer.noPermissionAction'),false);
 		}
-		if ($isDownload) Hook::trigger('explorer.fileDownload', $path);
-		Hook::trigger('explorer.fileOut', $path);
+		if($isDownload){Hook::trigger('explorer.fileDownload', $path);}
+		Hook::trigger('explorer.fileOut',$path);
 		if(isset($this->in['type']) && $this->in['type'] == 'image'){
 			$info = IO::info($path);
 			$imageThumb = array('jpg','png','jpeg','bmp');
 			$width = isset($this->in['width']) ? intval($this->in['width']) :0;
-			if(!$width || $width >= 2000){
+			if($isDownload || !$width || $width >= 2000){
 				$this->updateLastOpen($path);
 			}
 			if($info['size'] >= 1024*200 &&
@@ -827,33 +827,58 @@ class explorerIndex extends Controller{
 			){
 				return IO::fileOutImage($path,$width);
 			}
+			return IO::fileOut($path,$isDownload,$downFilename); // 不再记录打开时间;
 		}
 		$this->updateLastOpen($path);
-		IO::fileOut($path,$isDownload);
+		IO::fileOut($path,$isDownload,$downFilename);
 	}
 	/*
 	相对某个文件访问其他文件; 权限自动处理;支持source,分享路径,io路径,物理路径;
 	path={source:1138926}/&add=images/as.png; path={source:1138926}/&add=as.png
 	path={shareItem:123}/1138934/&add=images/as.png
+	
+	相对路径支持;local,io,(source),shareLink,shareItem[local,io,(source)]
+	/a/b/.././c/../1.txt => /a/1.txt;
 	*/
 	public function fileOutBy(){
 		if(!$this->in['path']) return; 
 		
 		// 拼接转换相对路径;
-		$io = IO::init($this->in['path']);
-		$parent = $io->getPathOuter($io->pathFather($io->path));
-		$find   = $parent.'/'.rawurldecode($this->in['add']); //支持中文空格路径等;
-		$find   = KodIO::clear(str_replace('./','/',$find));
-		$info   = IO::infoFull($find);
-		if(!$info || $info['type'] != 'file'){
+		$add   = rawurldecode($this->in['add']);
+		$parse = kodIO::parse($this->in['path']);
+		$allow = array('',kodIO::KOD_IO,kodIO::KOD_USER_DRIVER,kodIO::KOD_SHARE_LINK);
+		if(in_array($parse['type'],$allow)){
+			$distPath = kodIO::pathTrue($parse['path'].'/../'.$add);
+			$distInfo = IO::info($distPath);
+		}else{//KOD_SOURCE KOD_SHARE_ITEM(source,)
+			$info = IO::info($parse['path']);
+			if($parse['type'] == kodIO::KOD_SOURCE){
+				$level = Model("Source")->parentLevelArray($info['parentLevel']);
+				$pathRoot = '{source:'.$level[0].'}';
+			}else if($parse['type'] == kodIO::KOD_SHARE_ITEM){
+				$pathArr   = explode('/',trim($parse['path'],'/'));
+				$pathRoot  = $pathArr[0];
+				$shareInfo = Model('Share')->getInfo($parse['id']); // source路径内部协作分享;
+				if($shareInfo['sourceID']){$pathRoot = $pathRoot.'/'.$shareInfo['sourceID'];}
+			}
+			
+			$displayPathArr = explode('/',trim($info['pathDisplay'],'/'));array_shift($displayPathArr);
+			$displayPath = $pathRoot.'/'.implode('/',$displayPathArr);
+			$distPath = kodIO::pathTrue($displayPath.'/../'.$add);
+			$distInfo = IO::infoFullSimple($distPath);
+		}
+		// pr($distPath,$distInfo,$parse,[$pathRoot,$displayPath,$info,$shareInfo]);exit;
+		if(!$distInfo || $distInfo['type'] != 'file'){
 			return show_json(LNG('common.pathNotExists'),false);
 		}
-
-		$dist = $info['path'];
-		ActionCall('explorer.auth.canView',$dist);// 再次判断新路径权限;
-		$this->updateLastOpen($dist);
-		Hook::trigger('explorer.fileOut', $dist);
-		IO::fileOut($dist,false);
+		if(isset($this->in['type']) && $this->in['type'] == 'getTruePath'){
+			show_json($distInfo['path'],true);
+		}
+		
+		ActionCall('explorer.auth.canView',$distInfo['path']);// 再次判断新路径权限;
+		$this->updateLastOpen($distInfo['path']);
+		Hook::trigger('explorer.fileOut', $distInfo['path']);
+		IO::fileOut($distInfo['path'],false);
 	}
 	
 	/**

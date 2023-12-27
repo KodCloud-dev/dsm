@@ -118,7 +118,8 @@ class KodSort{
 		return $arr;
 	}
 	public static function split($str){
-		return preg_split("//u",$str,-1,PREG_SPLIT_NO_EMPTY);
+		$arr = @preg_split("//u",$str,-1,PREG_SPLIT_NO_EMPTY);
+		return is_array($arr) ? $arr : array();
 	}
 	
 	// 阿拉伯数字转中文数字; 不支持小数和正负数, 最长16位(一亿亿-1);
@@ -201,12 +202,12 @@ class KodSort{
         }
 		if(strpos($str,'亿亿') > 0) return -1;
         $splited = explode("亿",$str);
-        if (count($splited) == 2) {
+        if ($splited && count($splited) == 2) {
             $rest = $splited[1] == "" ? 0 : self::chineseToNumber($splited[1]);
             return $summary + self::chineseToNumber($splited[0]) * 100000000 + $rest;
         }
 		$splited = explode("万",$str);
-        if (count($splited) == 2) {
+        if ($splited && count($splited) == 2) {
             $rest = $splited[1] == "" ? 0 : self::chineseToNumber($splited[1]);
             return $summary + self::chineseToNumber($splited[0]) * 10000 + $rest;
         }

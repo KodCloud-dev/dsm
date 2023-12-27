@@ -1,9 +1,8 @@
 <?php 
 $config['database'] = array (
-  'DB_TYPE' => 'pdo',
-  'DB_DSN' => 'mysql:host=localhost;dbname=KDB_NAME',
+  'DB_TYPE' => 'mysqli',
   'DB_HOST' => 'localhost',
-  'DB_PORT' => '3306',
+  'DB_PORT' => 3306,
   'DB_USER' => 'KDB_USER',
   'DB_PWD' => 'KDB_PWD',
   'DB_NAME' => 'KDB_NAME',
@@ -13,4 +12,3 @@ $config['database'] = array (
 );
 $config['cache']['sessionType'] = 'file';
 $config['cache']['cacheType'] = 'file';
-$config['settings']['updloadChunkSize'] = 1024*1024*5;

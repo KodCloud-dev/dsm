@@ -34,16 +34,26 @@ class officeViewerlibreOfficeIndex extends Controller {
 		// 转换文件已存在，直接输出
 		$fileHash = KodIO::hashPath($info);
 		$convName = "libreOffice_{$ext}_{$fileHash}.pdf";
+		if (!is_dir(TEMP_FILES)) mk_dir(TEMP_FILES);
 		$tempFile = TEMP_FILES . $convName;
-		if($sourceID = IO::fileNameExist($plugin->cachePath, $convName)){
-			return $this->fileView(KodIO::make($sourceID),$convName);
+		$tempInfo = IO::infoFull($plugin->cachePath.$convName);
+		if ($tempInfo) {
+			$file = Model('File')->fileInfo($tempInfo['fileID']);
+			if ($file && IO::exist($file['path'])) {
+				return $this->fileView($tempInfo['path'],$convName);
+			}
 		}
 
 		$localFile = $this->localFile($path);
 		if(!$localFile){
             $localFile = $plugin->pluginLocalFile($path);	// 下载到本地文件
         }
+		// 后缀名异常时（webdav为tmp）会转换失败
+		if (get_path_ext($localFile) != $ext) {
+			$localFile = $localFileNew = IO::copyFile($localFile, $localFile.'.'.$ext);
+		}
         $this->convert2pdf($localFile,$tempFile,$ext);
+		if (isset($localFileNew)) del_file($localFileNew);
 
 		if(@file_exists($tempFile)){
 			$cachePath  = IO::move($tempFile,$plugin->cachePath);
@@ -57,8 +67,11 @@ class officeViewerlibreOfficeIndex extends Controller {
 
 	// 打开pdf文件
 	public function fileView($path,$convName){
-		$this->in['path'] = Action('explorer.share')->linkFile($path).'&path=/'.$convName;
-		Action('explorer.fileView')->index();
+		// $this->in['path'] = Action('explorer.share')->linkFile($path).'&path=/'.$convName;
+		$link = Action('explorer.share')->linkFile($path).'&path=/'.$convName;
+		$link = APP_HOST.'#fileView&path='. rawurlencode($link);
+		Action($this->pluginName)->showWebOffice('lb', $link);
+		// Action('explorer.fileView')->index();
 	}
 
 	// office文件转pdf
@@ -76,14 +89,17 @@ class officeViewerlibreOfficeIndex extends Controller {
         $fname = get_path_this($tempPath);
         $fpath = get_path_father($tempPath);
         // 转换类型'pdf'改为'新文件名.pdf'，会生成'源文件名.新文件名.pdf'
-        $script = $command . ' --headless --invisible --convert-to '.$fname.' "'.$file.'" --outdir '.$fpath;
-		shell_exec($script);
+		$export = 'export HOME=/tmp/libreOffice && ';
+        $script = $export.$command . ' --headless --invisible --convert-to '.escapeShell($fname).' "'.escapeShell($file).'" --outdir '.$fpath;
+		$out = shell_exec($script);
 
-        $tname = basename(get_path_this($file), '.'.$ext);
+        $tname = substr(end(explode('/', $file)), 0, -strlen('.'.$ext));
         $tfile = $fpath . $tname . '.' . $fname;    // 源文件名.filename.pdf
-        // write_log(array('libre convert------', $script, $tfile, file_exists($tfile)));
-        if(!file_exists($tfile)) return;
-		move_path($tfile,$cacheFile);
+        if(!file_exists($tfile)){
+            write_log('libreoffice convert error: '.$script."\n".$out,'error');
+        }
+		$res = move_path($tfile,$cacheFile);
+		if (!$res) write_log('libreoffice move file error: '.$tfile.'=>'.$cacheFile, 'error');
 	}
 
     // 获取文件 hash
@@ -111,6 +127,7 @@ class officeViewerlibreOfficeIndex extends Controller {
 
     //linux 注意修改获取bin文件的权限问题;
 	public function check(){
+		if(!$GLOBALS['isRoot']){show_tips(LNG('explorer.noPermissionAction'));}
         $bin = $this->in['soffice'];
 		$plugin = Action($this->pluginName);
         if(!empty($bin)) {
@@ -134,7 +151,7 @@ class officeViewerlibreOfficeIndex extends Controller {
         $check = 'LibreOffice';
 		$data = Action($this->pluginName)->_appConfig('lb');
         $bin = isset($data['soffice']) ? $data['soffice'] : '';
-		$bin = '"'.trim(iconv_system($bin)).'"';	// win路径空格处理
+		$bin = escapeShell(iconv_system($bin));	// win路径空格处理
         $result = $this->checkBin($bin,$check);
         return $result ? $bin : false;
     }

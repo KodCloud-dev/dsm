@@ -66,7 +66,7 @@ class oauthBindIndex extends Controller {
 		if (!$data && is_string($input['data'])) {
 			$msg = LNG('common.invalidParam');
 			if (isset($this->in['info']) && $this->in['info'] == '40003') {
-				Model('SystemOption')->set('systemSecret', '');
+				//Model('SystemOption')->set('systemSecret', '');
 				$msg = 'sign_error';
 			}
 			return $this->bindHtml($type, $data, false, array('bind', $msg));
@@ -218,10 +218,7 @@ class oauthBindIndex extends Controller {
 			Action('user.index')->loginSuccessUpdate($user);
 		}
 		if($this->withApp) {	// bindHtml会直接打印，故在此return
-			return array(
-				'code' => true,
-				'data' => array('success' => true)
-			);
+			return array('code' => true, 'data' => array('success' => true));
 		}
 		$data['bind'] = true;
 		return $this->bindHtml($type, $data, true, array('connect'));

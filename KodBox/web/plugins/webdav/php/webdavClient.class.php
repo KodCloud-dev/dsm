@@ -49,8 +49,8 @@ class webdavClient {
 	// 存储options返回头DAV字段;(标记支持项)
 	private function patchCheck(){
 		$data = $this->options('/');
-		if(!$data['header']['dav']) return;
-		$this->options['dav'] = $data['header']['dav'];
+		if(!$data['header'] || !$data['header']['DAV']) return;
+		$this->options['dav'] = $data['header']['DAV'];
 		$GLOBALS['in']['config'] = json_encode($this->options,true);// 修改配置;
 	}
 
@@ -85,9 +85,10 @@ class webdavClient {
 		$data = $this->send('DELETE',$this->makeUrl($path));
 		return $data['status'];
 	}
-	public function propfind($path,$depth='1'){
+	public function propfind($path,$depth='1',$header=''){	
 		$this->setHeader('Depth',$depth);//遍历深度
 		$this->setHeader('Content-type','text/xml; charset=UTF-8');
+		if($header){$this->setHeader($header);}
 		$body = '<D:propfind xmlns:D="DAV:"><D:allprop /></D:propfind>';
 		return $this->send('PROPFIND',$this->makeUrl($path),$body);
 	}
@@ -214,7 +215,7 @@ class webdavClient {
 		if(!$body) return $result;
 
 		$error = $status ? '':$header['0'];
-		if(strstr($header['content-type'],'/json')){
+		if(strstr($header['content-type'],'/json') || strstr($header['Content-Type'],'/json')){
 			$result['data']  = @json_decode($body,true);
 			if( !$status && is_array($result['data']) && 
 				array_key_exists('code',$result['data']) &&
@@ -261,19 +262,25 @@ class webdavClient {
 			curl_setopt($curl, CURLOPT_PUT,true);
 			return;
 		}
-		$postData 	= array();$key = 'UPLOAD_FILE';
-		$filename 	= $fileInfo['name'];
-		$path 		= $fileInfo['path'];		
-		$mime 		= get_file_mime(get_path_ext($filename));
-		if (class_exists('\CURLFile')){
-			$postData[$key] = new CURLFile(realpath($path),$mime,$filename);
-		}else{
-			$postData[$key] = "@".realpath($path).";type=".$mime.";filename=".$filename;
-		}
+		$path = $fileInfo['path'];
+        /*
+        $postData = array();$key = 'UPLOAD_FILE'; // post方式上传;
+        $filename = $fileInfo['name'];
+        $mime = get_file_mime(get_path_ext($filename));
+        if (class_exists('\CURLFile')){
+        	$postData[$key] = new CURLFile(realpath($path),$mime,$filename);
+        }else{
+        	$postData[$key] = "@".realpath($path).";type=".$mime.";filename=".$filename;
+        }
+        // post方式上传; 默认会加上header: multipart/form-data; boundary=-----xxxx--
+        //$this->setHeader('Content-Type','application/octet-stream');//"application/x-www-form-urlencoded"
+        //$this->setHeader('Content-Length',@filesize($path));
+        curl_setopt($curl, CURLOPT_POSTFIELDS,$postData);
+        */
+		
 		curl_setopt($curl, CURLOPT_PUT,true);
 		curl_setopt($curl, CURLOPT_INFILE,@fopen($path,'r'));
 		curl_setopt($curl, CURLOPT_INFILESIZE,@filesize($path));
-		curl_setopt($curl, CURLOPT_POSTFIELDS,$postData);
 		curl_setopt($curl, CURLOPT_TIMEOUT,3600*10);
 		if(class_exists('\CURLFile')){
 			curl_setopt($curl, CURLOPT_SAFE_UPLOAD, true);
@@ -346,7 +353,7 @@ class webdavClient {
 						if (is_array($v) && empty($v)) {$v = '';}
 						$output[$t][] = $v;
 					} elseif ($v || $v === '0') {
-						$output = (string) $v;
+						$output = is_array($v) ? json_encode($v) : $v;
 					}
 				}
 				if ($node->attributes->length && !is_array($output)) { // has attributes but isn't an array

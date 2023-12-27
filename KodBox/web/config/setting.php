@@ -27,7 +27,7 @@ $config['settings'] = array(
 		'threads'			=> 10,			// 上传并发数;部分低配服务器上传失败则将此设置为1
 		'ignoreName'		=> '',			// 忽略的文件名,不区分大小写; 逗号隔开,例如: .DS_Store,Thumb.db
 		'chunkRetry'		=> 2,			// 分片上传失败,重传次数;针对每个分片;
-		'sendAsBinary'		=> 0,			// 以二进制方式上传;后端服务器以php://input接收;0则为传统方式上传 $_FILE;
+		'sendAsBinary'		=> 1,			// 以二进制方式上传;后端服务器以流php://input接收; 0则为传统方式上传 $_FILE;
 		'httpSendFile'		=> false,		// 调用webserver下载 https://doc.kodcloud.com/v2/#/help/options
 		
 		'ignoreExt'			=> '',          // 限制的扩展名; 扩展名在该说明中则自动不上传;逗号隔开
@@ -48,9 +48,11 @@ $config['settings'] = array(
 	'zipFileSizeMax'  		=> 0,			// 文件(夹)压缩大小限制;   0-不限制; 单位GB(float)
 	'groupCompany'			=> 0,			// 二级部门为子公司,独立部门;
 	'shareLinkExpireTime'	=> 0,			// 外链分享过期时间，单位天（n天后过期）
+	'userLoginLimit'		=> 5,			// 同一账号限制同时登录设备数;0=不限制;guest/admin不限制
 	
 	'staticPath'		=> APP_HOST."static/",	//静态文件目录,可以配置到cdn;
 	'kodApiServer'		=> "https://api.kodcloud.com/?", //QQ微信登录/邮件发送/插件-列表等 
+	'allowHeaderCookie' => '1',				// 允许header自定义传输cookie;
 );
 $config['settings']['searchContent'] 	= 1;		// 搜索:允许文件内容搜索
 $config['settings']['searchMutil'] 		= 1;		// 搜索:开启批量搜索
@@ -59,17 +61,22 @@ $config['settings']['systemBackup'] 	= 1; 		// 系统备份;
 $config['settings']['bigFileForce'] 	= 0; 		// 32位时强制允许大文件上传; https://demo.kodcloud.com/#s/735psg0g 
 $config['settings']['sysTempPath'] 		= TEMP_PATH;	// 系统临时目录，避免中转时data临时目录慢（如nfs挂载）
 $config['settings']['sysTempFiles'] 	= TEMP_FILES;	// 系统临时文件目录
-$config['settings']['fileViewLog'] 		= 0;		// 操作日志-文件预览
+$config['settings']['fileViewLog'] 		= 0;			// 操作日志-文件预览
 
-
-$config["ADMIN_ALLOW_IO"] 				= 1;		// 物理路径或io路径是否允许操作开关，仅限管理员(禁用后无法直接管理物理路径)
-$config["ADMIN_ALLOW_SOURCE"] 			= 1;		// 其他部门or用户目录操作开关，仅限管理员(是否能直接访问其他用户空间或部门空间)
+$config['pluginHome'] 					= 'https://kodcloud.com/';	// 插件主页
 $config['APP_HOST_LINK'] 				= APP_HOST;	// 分享链接站点url; 可在setting_user中覆盖;
 $config['PLUGIN_HOST'] 					= APP_HOST.str_replace(BASIC_PATH,'',PLUGIN_DIR);//插件url目录;
 $config['PLUGIN_HOST_CDN_APP'] 			= '';//支持配置到cdn的插件; 插件名,逗号隔开;
 $config['PLUGIN_HOST_CDN'] 				= $config['PLUGIN_HOST'];//在上面的配置插件中才使用此作为插件静态资源url;
 $config['DEFAULT_PERRMISSIONS'] 		= 0755;
 $config['DEFAULT_PERRMISSIONS_KOD'] 	= 0700; // 内部文件,nginx才能读写;
+
+$config["ADMIN_ALLOW_USER_SAFE"]		= 0; // 是否允许系统管理员访问用户私密空间,默认关闭;ADMIN_ALLOW_SOURCE为0时无效;当有离职等情况需管理时可打开
+$config["ADMIN_ALLOW_IO"] 				= 1; // 物理路径或io路径是否允许操作开关，仅限管理员(禁用后无法直接管理物理路径)
+$config["ADMIN_ALLOW_SOURCE"] 			= 1; // 其他部门or用户目录操作开关，仅限管理员(是否能直接访问其他用户空间或部门空间)
+$config["ADMIN_ALLOW_ALL_ACTION"] 		= 1; // 三权分立,限制系统管理员权限;关闭后系统管理员无法设置用户角色及部门权限(需配置[安全保密员及审计员角色])
+$config["ADMIN_AUTH_LIMIT_PLUGINS"]		= 'adminer,webConsole';// 限制系统管理员权限时,同时限制插件列表;
+
 
 // 存储类型名对应列表
 $config['settings']['ioClassList'] = array(
@@ -124,6 +131,7 @@ $config['systemOption'] = array(
 	'requestPerMinuteMax'  		=> 0,			// 每分钟最大请求数;0不限制; 推荐:600,300个则每秒5个,每5秒25个, 25个内小于5s
 	'requestAllowPerMinuteMax' 	=> 0,			// 允许的接口每分钟最大请求数;0不限制;推荐:3000, 高频次接口(upload/mkdir/list)
 	'userTaskAllowMax'			=> 0, 			// 每个用户允许的长任务个数;0不限制, 推荐50, 管理员不受限制; 占用独立进程;
+	'systemListDriver'  		=> '1',			// 存储挂载,是否显示系统磁盘
 );
 
 
@@ -142,8 +150,9 @@ $config['cache'] = array(
 		// 'timeout'  => 20, 		// 连接超时时间
 		// 'auth' 	  => '',  		// 密码
 		// 'pconnect' => true,  	// 是否持久链接;
-		// 'server'  => array('10.10.10.1:8001','10.10.10.2:8001'), //集群方式连接;有则忽略host/port
+		// 'server'   => array('10.10.10.1:8001','10.10.10.2:8001'), //集群方式连接;有则忽略host/port
 		// 'mode'	  => 'slave',	// slave、sentinel(暂不支持)、cluster
+		// 'db'		  => 0,			// 选择数据库; 默认0, db0~15
     ),
     'memcached' => array(
         'host' 	   => '127.0.0.1',
@@ -197,7 +206,7 @@ $config['settings']['appType'] = array(
 	array('type' => 'others','name' => 'common.others','class' => 'ri-more-fill'),
 );
 $config['defaultPlugins'] = array(
-	'adminer','DPlayer','imageExif','jPlayer','photoSwipe','picasa','pdfjs',
+	'adminer','DPlayer','jPlayer','photoSwipe','picasa','pdfjs','htmlEditor',
 	'simpleClock','client','webodf','webdav','toolsCommon','oauth','fileThumb',
 	'yzOffice','officeViewer','msgWarning',
 );
@@ -255,6 +264,9 @@ $config['settingSystemDefault'] = array(
 	'systemRecycleClear'=> '10',		// 系统回收站自动清除,N天以前内容;
 	'systemBackup'		=> '1',			// 文档自动备份;
 	'groupTagAllow' 	=> '0',			// 是否启用部门公共标签
+	'groupSpaceLimit'	=> '0',			// 部门网盘层级限制; 超过部门的层级不显示部门网盘
+	'groupSpaceLimitLevel'=> '5',		// 部门网盘层级,指定层级,默认超过5层不显示部门网盘; >=1;
+	'pathSafeSpaceEnable' => '1',		// 1|0, 全局开启关闭[私密保险箱]
 	
 	// 分享相关设置;
 	'shareToMeAllowTree'=> '1',			// 分享给我的内容支持按部门组织架构或用户进行分类
@@ -262,6 +274,7 @@ $config['settingSystemDefault'] = array(
 	'shareLinkZip'		=> '1',			// 外链分享,开启关闭文件夹打包下载; 默认开启
 	'shareLinkPasswordAllowEmpty'	=> '1',		// 外链分享允许密码为空,关闭后将强制设置密码;
 	'shareLinkAllowGuest'			=> '1',		// 外链分享允许未登录游客访问
+	'desktopAppDisable'				=> '',		// 桌面默认快捷方式入口隐藏项;
 	
 	
 	'treeOpen'			=> 'my,myFav,myGroup,rootGroup,recentDoc,fileType,fileTag,driver',//树目录开启功能;
@@ -291,7 +304,8 @@ $config['settingSystemDefault'] = array(
 		array('name'=>'官网','url'=>'https://kodcloud.com',"icon"=>"ri-home-line-3",'target'=>'inline','use'=>'1')
 	),
 );
-$config['settingSystemDefault']['searchFulltext'] = 0;			// like%% 转为全文索引
+$config['settingSystemDefault']['searchFulltext'] = 0;			// like%% 转为match (fulltext索引字段)
+$config['settingSystemDefault']['searchNumberUseLike']  = 0;	// 开启全文搜索时, 搜为纯数字则使用like(ngram,match纯数字会很慢)
 $config['settingSystemDefault']['searchFulltextForce']  = 0;	// 完整匹配; (否则会对$words进行分词,包含一部分也作为结果;会多出结果) 
 $config['settingSystemDefault']['searchFulltextInnodb'] = 0;	// 是否为innodb 
 
@@ -312,7 +326,10 @@ $config['settingDefault'] = array(
 	'wall'				=> "4",			// wall picture
 	'listTypeKeep'		=> '1',			// 1|0, 为每个文件夹选择视图模式，或对所有文件夹使用相同的视图模式
 	'listSortKeep'		=> '1',			// 1|0, 为每个文件夹配置列排序顺序，或对所有文件夹使用相同的顺序
+	'menuBarAutoHide'	=> '0',			// 1|0, 左侧菜单栏自动显示和隐藏
+	'pathSafeSpaceShow' => '1',			// 1|0, 个人空间根目录显示隐藏-私密保险箱
 	
+	"themeStyle"		=> 'theme-windows',	// 主题样式; theme-windows/theme-mac;
 	"fileRepeat"		=> "replace",	// rename,replace,skip
 	"recycleOpen"		=> "1",			// 1 | 0 代表是否开启
 	'kodAppDefault'		=> '',			// 
@@ -346,9 +363,9 @@ $config['editorDefault'] = array(
 // 多语言; 在user/view/parseMetaLang中替换; meta.[key] 为多语言key;
 $config['settings']['sourceMeta'] = array(
 	'configItem'	=> array(
-		'defaultShow'	=> 'user_sourceAlias', 					 					 //默认显示的key;
-		'fileAllow'		=> 'user_sourceAlias,user_sourceNumber,user_sourceParticipant', //文件支持的key
-		'folderAllow'	=> 'user_sourceAlias,user_sourceParticipant',					 //文件夹支持的key
+		'defaultShow'	=> 'user_sourceAlias,user_sourceCover', 					 	//默认显示的key;
+		'fileAllow'		=> 'user_sourceAlias,user_sourceCover,user_sourceNumber,user_sourceParticipant', //文件支持的key
+		'folderAllow'	=> 'user_sourceAlias,user_sourceCover,user_sourceParticipant',					//文件夹支持的key
 	),
 	'user_sourceAlias' => array(
 		"type"		=> "fileSelect",
@@ -364,6 +381,21 @@ $config['settings']['sourceMeta'] = array(
 			"authCheck"	=> "read",			// read,write或空;默认为可写入;
 		),
 	),
+	'user_sourceCover' => array(
+		"type"		=> "fileSelect",
+		"value"		=> "",
+		"display" 	=> "文档封面",
+		"info"		=> array(
+			"single"	=> true,			// 单选or多选; true/false
+			"type"		=> "file", 			// 文件or文件夹选择; file|folder|all
+			"makeUrl"	=> true,			// 生成永久外链,
+			"valueKey"	=> "downloadPath", 	// 取结果中的key
+			"valueShowKey"	=> 'name',		// 显示名称;
+			"title"		=> "文档封面", 		 // 对话框标题;		
+			"authCheck"	=> "read",			// read,write或空;默认为可写入;
+		),
+	),
+	
 	//扩展;
 	'user_sourceNumber' => array(
 		"type"		=> "input",
@@ -444,16 +476,35 @@ $config['settingAll'] = array(
 		"ta"	=>	array("த‌மிழ்","泰米尔语","Tamil"),
 		"th"	=>	array("ภาษาไทย","泰语","Thai"),
 		"tr"	=>	array("Türkçe","土耳其语","Turkish"),
-		"uk"	=>	array("Українська","乌克兰语","Ukrainian"),
-		"vi"	=>	array("Tiếng Việt","越南语","Vietnamese"),
+		"uk"	=>	array("Українська","乌克兰语","Ukrainian",'uk'),
+		"vi"	=>	array("Tiếng Việt","越南语","Vietnamese",'vn'),// 3=国旗icon
 	),//de el fi fr nl pt	d/m/Y H:i
 	
 	'theme'		=> "mac,win10,win7,metro,metro_green,metro_purple,metro_pink,metro_orange,alpha_image,alpha_image_sun,alpha_image_sky,diy",
-	'codeTheme'	=> "chrome,clouds,crimson_editor,eclipse,github,kuroir,solarized_light,tomorrow,xcode,ambiance,monokai,idle_fingers,pastel_on_dark,solarized_dark,twilight,tomorrow_night_blue,tomorrow_night_eighties",
+	'codeTheme'	=> "chrome,clouds,crimson_editor,eclipse,github,kuroir,solarized_light,tomorrow,xcode,gruvbox_light_hard,cloud9_day,ambiance,monokai,idle_fingers,pastel_on_dark,solarized_dark,twilight,tomorrow_night_blue,tomorrow_night_eighties,github_dark,cloud9_night,gruvbox_dark_hard",
 	'codeFont'	=> 'Source Code Pro,Consolas,Courier,DejaVu Sans Mono,Liberation Mono,Menlo,Monaco,Monospace',
 );
 
-
+I18n::init();$lang = I18n::$langType;
+if($lang != 'zh-CN' && $lang != 'zh-CN'){
+	$config['settingSystemDefault']['systemDesc'] = './static/images/common/logo-en.png';
+	$config['settingSystemDefault']['systemDesc'] = "—— kodbox.explorer";
+	$config['settingSystemDefault']['newUserApp'] = "trello,icloud";
+	$config['settingSystemDefault']['newUserFolder']  = "Documents,Pictures,Music";
+	$config['settingSystemDefault']['newGroupFolder'] = "Documents,Pictures,Others";
+	$config['settingSystemDefault']['groupRootName']  = "Group";
+	$config['settingSystemDefault']['sourceSecretList']  = '[{"id":"","title":"A-Secret","style":"#E64A19","auth":""},{"id":"","title":"B-Secret","style":"#FF5722","auth":""},{"id":"","title":"C-Secret","style":"#E57754","auth":""}]';
+	$config['settingSystemDefault']['menu'][3]['name']  = 'kodcloud';
+	
+	$config['settings']['sourceMeta']['user_sourceAlias']['display'] = "Attachments";
+	$config['settings']['sourceMeta']['user_sourceAlias']['info']['title'] = "Attachments";
+	$config['settings']['sourceMeta']['user_sourceNumber']['display'] = "Number";
+	$config['settings']['sourceMeta']['user_sourceParticipant']['display'] = "Participant";
+}
+I18n::set(array(
+	'common.iconApp' => 'images/icon/icon_512.png',
+	'common.iconFav' => 'images/icon/fav.png',
+));
 
 /**
  * 无需登录检测权限检测配置;
@@ -465,7 +516,6 @@ $config['settingAll'] = array(
  * user.index.login  代表user模块下index控制器的login方法；
  */
 $config['authNotNeedLogin'] = array(
-	'test.*',
 	'user.index.*',
 	'user.bind.*',
 	'user.sso.*',
@@ -473,8 +523,9 @@ $config['authNotNeedLogin'] = array(
 	'user.view.*',
 	'explorer.share.*',
 	'sitemap.*',
-	'install.*',		// 安装/更新
-	'plugin.*',			//插件排除，权限单独检测;
+	'install.*',			// 安装/更新
+	'plugin.*',				// 插件排除，权限单独检测;
+	'comment.index.test'	// 临时测试;
 );
 
 /**
@@ -486,7 +537,7 @@ $config['authAllowAction'] = array(
 	'explorer.fav.get',
 	'explorer.index.pathInfo',
 	'explorer.lightApp.get',
-	'explorer.list.path',
+	'explorer.list.path','explorer.list.listAll',
 	'explorer.index.desktopApp',
 	'explorer.userShare.get',
 	'explorer.userShare.myShare',
@@ -495,7 +546,7 @@ $config['authAllowAction'] = array(
 	'explorer.tagGroup.get','explorer.tagGroup.set',
 	'explorer.tagGroup.filesRemoveFromTag','explorer.tagGroup.filesAddToTag',
 
-	'user.setting.notice',
+	'user.setting.notice','user.setting.userLoginList',
 	'user.setting.taskList','user.setting.taskKillAll','user.setting.taskAction',
 	'user.setting.userChart','user.setting.userLog','user.setting.userDevice',
 	
@@ -522,11 +573,13 @@ $config['authRoleAction']= array(
 	),
 	'explorer.download'		=> array('explorer.index'=>'fileDownload,zipDownload,fileDownloadRemove'),
 	'explorer.share'		=> array('explorer.userShare'=>'add,edit,del'),
+	'explorer.shareLink'	=> array('explorer.userShare'=>'add,edit,del'),
 	'explorer.remove'		=> array('explorer.index'=>'pathDelete,recycleDelete,recycleRestore'),
 	'explorer.edit'			=> array(
 		'explorer.userShareTarget' => 'save',
 		'explorer.index'	=> 'setDesc,setMeta,setAuth,fileSave,pathRename,zip,unzip',
 		'explorer.editor'	=> 'fileSave',
+		'explorer.listSafe' => 'action',
 		'explorer.history'	=> 'get,remove,clear,rollback,setDetail,fileOut',
 		'comment.index'		=> 'listData,add,remove,prasise,listByUser,listChildren'
 	),
@@ -537,7 +590,7 @@ $config['authRoleAction']= array(
 	'explorer.zip'			=> array('explorer.index'=>'zip,zipDownload'),
 
 	'user.edit'				=> array(
-		'user.setting'		=> 'setConfig,setUserInfo,setHeadImage,uploadHeadImage',
+		'user.setting'		=> 'setConfig,setUserInfo,setHeadImage,uploadHeadImage,userLogoutSet',
 	),
 	'user.fav' 				=> array(
 		'explorer.fav'		=> 'add,rename,moveTop,moveBottom,del',
@@ -563,6 +616,7 @@ $config['authRoleAction']= array(
 		'admin.group' 		=> 'get,getByID,search'
 	),
 	'admin.member.userEdit'	=> array('admin.member'=>'add,edit,remove,status,addGroup,removeGroup,switchGroup'),
+	'admin.member.userAuth'	=> array('admin.member'=>'add,edit,remove,status,addGroup,removeGroup,switchGroup'),
 	'admin.member.groupEdit'=> array('admin.group'=>'add,edit,status,sort,remove,switchGroup'),
 	
 	'admin.auth.list'		=> array('admin.auth'=>'get'),
@@ -585,6 +639,12 @@ $config['authRoleAction']= array(
 	'admin.autoTask.edit'	=> array('admin.autoTask'=>'add,edit,enable,remove,run,taskStart,taskRun,taskRunEvent'),
 );
 
+// 权限允许true值覆盖;
+$config['authRoleActionKeepTrue'] = array(
+	'explorer.share','explorer.shareLink',
+	'admin.member.userEdit','admin.member.userAuth'
+);
+
 if (file_exists(BASIC_PATH.'config/setting_user.php')) {
 	include_once(BASIC_PATH.'config/setting_user.php');
 }
@@ -598,7 +658,9 @@ if(GLOBAL_DEBUG_LOG_ALL){
 	Hook::bind('beforeShutdown','writeLogAll');
 	Hook::bind('show_json','writeLogAll');
 }
+// Hook::bind('show_json','writeLogAll');
 function writeLogAll($data=false){
+	// if(ACT == 'fileUpload'){return;}
 	$caller = get_caller_info();
 	$trace  = think_trace('[trace]');
 	$ua = $_SERVER['HTTP_USER_AGENT'];

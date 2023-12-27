@@ -246,12 +246,12 @@ class S3 {
 	 */
 	private function __execReponse($rest, $function, $noBody = 0, $params = array(), $code = 200) {
 		if ($rest->error === false && $rest->code !== $code) {
+			write_log(array('S3 request error',$rest->code,$rest->response, get_caller_info()), 'S3');
 			$rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
 		}
 		if ($rest->error !== false) {
 			$param = implode(',', $params);
-			$this->__triggerError(sprintf('S3->' . $function . '('.$param.'): [%s] %s', $rest->error['code'], $rest->error['message']), __FILE__, __LINE__);
-
+			$this->__triggerError('S3->'.$function.'('.$param.') ['.$rest->error['code'].'] '.$rest->error['message'], __FILE__, __LINE__);
 			return false;
 		}
 		if($noBody) return true;
@@ -992,11 +992,11 @@ class S3 {
 		}
 
 		if ($rest->response->error === false && $rest->response->code !== 200 && $rest->response->code !== 206) {
+			write_log(array('S3 request error [getObject]',$rest->code,$rest->response, get_caller_info()), 'S3');
 			$rest->response->error = array('code' => $rest->response->code, 'message' => 'Unexpected HTTP status');
 		}
 		if ($rest->response->error !== false) {
-			$this->__triggerError(sprintf("S3->getObject({$bucket}, {$uri}): [%s] %s", $rest->response->error['code'], $rest->response->error['message']), __FILE__, __LINE__);
-
+			$this->__triggerError("S3->getObject({$bucket}, {$uri}): [".$rest->response->error['code'].'] '.$rest->response->error['message'],__FILE__,__LINE__);
 			return false;
 		}
 
@@ -1015,11 +1015,12 @@ class S3 {
 		$rest = $rest->getResponse();
 
 		if ($rest->error === false && ($rest->code !== 200 && $rest->code !== 404)) {
+			write_log(array('S3 request error [getObjectInfo]',$rest->code,$rest->response, get_caller_info()), 'S3');
 			$rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
 		}
 		if ($rest->error !== false) {
-			$this->__triggerError(sprintf("S3->getObjectInfo({$bucket}, {$uri}): [%s] %s", $rest->error['code'], $rest->error['message']), __FILE__, __LINE__);
-
+			// url包含%xxx时会报错;
+			$this->__triggerError("S3->getObjectInfo({$bucket}, {$uri}): [".$rest->error['code'].'] '.$rest->error['message'],__FILE__,__LINE__);
 			return false;
 		}
 
@@ -1142,6 +1143,7 @@ class S3 {
 		// $expires = $this->__getTime() + $lifetime;
 		$expires = strtotime(date('Ymd 23:59:59')); // kodbox：签名链接有效期，改为当天有效
 		$uri = str_replace(array('%2F', '%2B'), array('/', '+'), rawurlencode($uri));
+		ksort($subResource);
 		$ext = http_build_query($subResource);
 		$url = sprintf(
 			'%s/%sAWSAccessKeyId=%s&Expires=%u&Signature=%s', 
@@ -1561,6 +1563,7 @@ class S3 {
 
 		$this->headers['Host'] = get_url_domain($endpoint);
 		if ($this->bucket !== '') {
+			// TODO 包含'_'时导致bucket重复
 			if ($this->__dnsBucketName($this->bucket)) {
 				$this->resource = '/' . $this->bucket . $this->uri;
 			} else {
@@ -1663,6 +1666,8 @@ class S3 {
 		curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+		curl_setopt($curl, CURLOPT_CONNECTTIMEOUT,60);	// 建立连接
+		// curl_setopt($curl, CURLOPT_TIMEOUT,60);		// 建立连接+数据传输
 
 		$proxy = $this->proxy;
 		if ($proxy != null && isset($proxy['host'])) {

@@ -37,10 +37,10 @@ $(function(){
         $('.page-box').addClass(isWap() ? 'is-in-wap' : 'not-in-wap');
         $('.page-box.not-in-wap #output').html('</div><div id="left_slides_bar"></div>');
         $.ajax({
-            url: FILE_INFO.fileUrl,
+            url: FILE_INFO.link,
             type: 'head',
             success: function(res){
-                pptxToHtml(FILE_INFO.fileUrl);
+                pptxToHtml(FILE_INFO.link);
             },
             error: function(err){
                 if(tipsLoading){tipsLoading.close();tipsLoading = false;}
@@ -48,14 +48,13 @@ $(function(){
             }
         });
         window.onerror = function (message, url, line, column, error) {
-            if(tipsLoading){tipsLoading.close();tipsLoading = false;}
-            console.error(message, url, line, column, error);
-            page.showTips('文件损坏，或包含不支持的内容格式！');
+            // if(tipsLoading){tipsLoading.close();tipsLoading = false;}
+            webOfficeAutoChange(error);
+            console.warn(message, url, line, column, error);
         }
     }catch(err){
-        if(tipsLoading){tipsLoading.close();tipsLoading = false;}
-        console.error(err);
-        page.showTips('文件损坏，或包含不支持的内容格式！');
+        // if(tipsLoading){tipsLoading.close();tipsLoading = false;}
+        webOfficeAutoChange(err);
     }
 
     // 页面缩放比例，(当前宽/高) / (原始宽/高)，原始宽高比通常为960/720、1280/720
@@ -152,6 +151,7 @@ $(function(){
 
         // 结束
         if(tipsLoading){tipsLoading.close();tipsLoading = false;}
+        $('body.weboffice-page').addClass('loaded');
     });
     // 页面尺寸随窗口变化
     var setPgHeight = function(wap){

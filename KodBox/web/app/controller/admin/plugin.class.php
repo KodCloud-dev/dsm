@@ -154,6 +154,8 @@ class adminPlugin extends Controller{
 				show_json(LNG('explorer.success'));
 				break;
 			case 'update':
+				Hook::trigger($app.'Plugin.onUpdate');
+				Hook::apply($app.'Plugin.regist');
 				show_json(Hook::apply($app.'Plugin.update'));
 				break;
 			default:break;
@@ -188,9 +190,57 @@ class adminPlugin extends Controller{
 		if(substr($app,0,3) == 'oem'){
 			show_json("专属定制插件不支持卸载,不需要您可以禁用!",false);
 		}		
-		ActionCall($app.'Plugin.onUninstall',$app);
+		ActionCall($app.'Plugin.onUninstall');
 		$this->model->unInstall($app);
 		del_dir(PLUGIN_DIR.$app);
 		$this->appList();
+	}
+	
+	// 主程序升级处理; 适应关闭访问物理路径的情况;
+	public function appUpdate(){
+		$fileName = kodIO::clear($this->in['appName']);
+		$savePath = BASIC_PATH.'config/';
+		switch($this->in['step']){
+			case 'check':
+				$canUpdate = $this->appUpdateCheck($savePath.$fileName);
+				show_json($canUpdate,!!$canUpdate);
+				break;
+			case 'download':
+				$this->in['url'] = 'http://static.kodcloud.com/update/update/'.$fileName;;
+				$this->in['path']= $savePath;
+				Action("explorer.upload")->serverDownload();
+			case 'update':
+				$info = IO::info($savePath.$fileName);
+				if(!$info || $info['ext'] != 'zip'){
+					show_json(LNG('explorer.error'),false);
+				}
+				
+				$GLOBALS['IO_NO_HISTORY'] = 1; // 安装插件不记录历史版本;
+				$result = KodArchive::extract($info['path'],BASIC_PATH);
+				@unlink($info['path']);
+				show_json($result['data'],!!$result['code']);
+				break;
+			default:break;
+		}
+	}
+	
+	// 目录权限检测;
+	private function appUpdateCheck($zipFile){
+		if(get_path_ext($zipFile) == 'zip'){
+			@unlink($zipFile);
+		}
+		mk_dir(TEMP_FILES);
+		$checkArr = array(
+			BASIC_PATH.'app',
+			BASIC_PATH.'config',
+			BASIC_PATH.'plugins',
+			BASIC_PATH.'config/version.php',
+			BASIC_PATH.'app/controller/explorer/index.class.php',
+		);
+		foreach ($checkArr as $path) {
+			$info = IO::info($path);
+			if(!$info['isWriteable']){return false;}
+		}
+		return true;
 	}
 }

@@ -52,17 +52,15 @@ class userSetting extends Controller {
 			$input = trim(rawurldecode($input));
 		}
 		$input = html2txt($input);
-
 		$userID = $this->user['userID'];
 		if(in_array($data['type'], array('email', 'phone'))){
+			if(!isset($data['msgCode'])){$data['msgCode'] = '000';}
+			$this->userMsgCheck($input, $data); // 修改邮箱/手机号,需要验证码校验;
 			if($input == $this->user[$data['type']]){
 				show_json(LNG('common.' . $data['type']) . LNG('user.binded'), false);
 			}
 		}
-		// 邮件、手机验证码校验
-		if (isset($data['msgCode'])) {
-			$this->userMsgCheck($input, $data);
-		}
+
 		// 昵称校验——更新时校验
 		// 密码校验
 		if ($data['type'] == 'password') {
@@ -75,8 +73,8 @@ class userSetting extends Controller {
 			$msg = $this->model->errorLang($res);
 			show_json(($msg ? $msg : LNG('explorer.error')), false);
 		}
+		Action('user.index')->refreshUser($userID);
 		$userInfo = Model('User')->getInfo($userID);
-		Cache::set('kodUser', $userInfo);
 		show_json(LNG('explorer.success'), true, $userInfo);
 	}
 
@@ -178,8 +176,6 @@ class userSetting extends Controller {
 		if ($res = Model('User')->userSearch($where, 'name,nickName')) {
 			$typeTit = $type . ($type == 'phone' ? 'Number' : '');
 			show_json(LNG('common.' . $typeTit) . LNG('common.error'), false);
-			// $name = $res['nickName'] ? $res['nickName'] : $res['name'];
-			// show_json(LNG('common.' . $type) . LNG('user.bindOthers') . "[{$name}]", false);
 		}
 		// 判断邮箱、短信验证码
 		$param = array(
@@ -236,7 +232,7 @@ class userSetting extends Controller {
 
 		$path = KodIO::systemFolder('avataImage');
 		$image = 'avata-'.USER_ID.'.jpg';
-		$pathInfo 	= IO::infoFull($path.'/'.$image);
+		$pathInfo 	= IO::infoFullSimple($path.'/'.$image);
 		if($pathInfo){
 			IO::remove($pathInfo['path'], false);
 		}
@@ -260,9 +256,9 @@ class userSetting extends Controller {
 		if(!$this->model->userEdit($userID, array("avatar" => $link))) {
 			show_json(LNG('explorer.upload.error'), false);
 		}
-		$user = $this->model->getInfo($userID);
-		Session::set('kodUser', $user);
-		show_json($link, true, $user);
+		Action('user.index')->refreshUser($userID);
+		$userInfo = Model('User')->getInfo($userID);
+		show_json($link, true, $userInfo);
 	}
 
 	/**
@@ -377,6 +373,22 @@ class userSetting extends Controller {
 		show_json($res);
 	}
 	
+	// 当前账号在线设备列表;
+	public function userLoginList(){
+		$sign = Session::sign();
+		$arr  = Action("filter.userLoginState")->userListLoad(USER_ID);
+		$arr[$sign]['isSelf'] = true;
+		foreach ($arr as $key => $item) {
+			$arr[$key]['address'] = IpLocation::get($item['ip']);
+		}
+		show_json(array_values($arr));
+	}
+	// 踢下线某个登录设备;
+	public function userLogoutSet(){
+		$sign = Input::get('sign', null, null);
+		Action("filter.userLoginState")->userLogoutTrigger(USER_ID,$sign);
+		show_json(LNG('explorer.success'));
+	}
 
 	public function taskList(){ActionCall('admin.task.taskList',USER_ID);}
 	public function taskKillAll(){ActionCall('admin.task.taskKillAll',USER_ID);}

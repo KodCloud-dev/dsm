@@ -51,6 +51,12 @@ class installIndex extends Controller {
                 "io"	=> array(),
                 "lang"	=> I18n::getType(),
             );
+			if($this->in['full'] == '1'){
+				$options['_lang'] = array(
+					"list"	=> I18n::getAll(),
+					"lang"	=> I18n::getType(),
+				);
+			}
             show_json($options);
         }
 		$actions = array(
@@ -61,6 +67,13 @@ class installIndex extends Controller {
         if( in_array(ACTION, $actions) ){
 			ActionCall(ACTION);exit;
         }
+		
+		// 安装路径合法性检测; 不允许[, ;%][*][&=+%#?{}]; 允许(_!@$[]()-./); 需要转义([]@$)   
+        $uri = str_replace(HOST,'',APP_HOST);$matchArr = array();
+        if($uri && !preg_match("/^[a-zA-Z0-9_!@$\[\]\(\)\-\.\/]*$/",$uri,$matchArr)){
+        	show_tips("App path cann't has special chars<br/>(程序路径不支持包含特殊符号,请尽量使用英文字母及数字)<pre>".$uri.'</pre>');
+        }
+		
         $this->tpl = CONTROLLER_DIR . 'install/static/';
         $value = array('installPath' => INSTALL_PATH);
         $this->values = array_merge($value, $this->installFast());
@@ -170,7 +183,7 @@ class installIndex extends Controller {
         foreach($dbConfig as $key => $value) {
             $keys = explode("_", strtolower($key));
             $key = $keys[0] . ucfirst($keys[1]);
-            $database[$key] = strtolower($value);
+            $database[$key] = $value;
         }
         // 2.1 pdo数据处理
         if($database['dbType'] == 'pdo') {
@@ -272,6 +285,7 @@ class installIndex extends Controller {
             $db = Model()->db();
             $dbexist = $db->execute("show databases like '{$dbName}'");
         }
+        $GLOBALS['config']['database']['DB_NAME'] = $dbName;    // 避免auto调用时后续取该值为空（同一进程）
 
         // 1.3 检测缓存配置
         // 判断所需缓存配置是否有效——redis、memcached
@@ -279,20 +293,26 @@ class installIndex extends Controller {
             if(!extension_loaded($cacheType)){
                 return show_json(sprintf(LNG('common.env.invalidExt'), "[php-{$cacheType}]"), false);
             }
+            $host = Input::get("{$cacheType}Host", 'require');
+            $port = Input::get("{$cacheType}Port", 'require');
+
             $type = ucfirst($cacheType);
             $handle = new $type();
             try{
-                $host = Input::get("{$cacheType}Host", 'require');
-                $port = Input::get("{$cacheType}Port", 'require');
                 if($cacheType == 'redis') {
-                    $conn = $handle->connect($host, $port, 1);
+                    $handle->connect($host, $port, 1);
+                    $auth = Input::get('redisAuth');
+                    if ($auth) $handle->auth($auth);
+                    $conn = $handle->ping();
                 }else{
                     $conn = $handle->addServer($host, $port);
                     if($conn && !$handle->getStats()) $conn = false;
                 }
                 if(!$conn) return show_json(sprintf(LNG('admin.install.cacheError'),"[{$cacheType}]"), false);
             }catch(Exception $e){
-                return show_json(sprintf(LNG('admin.install.cacheConnectError'),"[{$cacheType}]"), false);
+                $msg = sprintf(LNG('admin.install.cacheConnectError'),"[{$cacheType}]");
+                $msg .= '<br/>'.$e->getMessage();
+                return show_json($msg, false);
             }
         }
 
@@ -339,6 +359,9 @@ class installIndex extends Controller {
             if(isset($host) && isset($port)){
                 $text[] = "\$config['cache']['{$cacheType}']['host'] = '{$host}';";
                 $text[] = "\$config['cache']['{$cacheType}']['port'] = '{$port}';";
+                if ($cacheType == 'redis' && $auth) {
+                    $text[] = "\$config['cache']['{$cacheType}']['auth'] = '{$auth}';";
+                }
             }
             $file = $this->userSetting;
             if(!@file_exists($file)) @touch($file);
@@ -390,6 +413,15 @@ class installIndex extends Controller {
 		    if(!empty($this->engine) && $this->engine == 'innodb') {
 		        $content = str_ireplace('MyISAM', 'InnoDB', $content);
 		    }
+            // fulltext索引兼容
+            $res = $db->query('select VERSION() as v');
+            $mysqlVersion = floatval(($res[0] && isset($res[0]['v'])) ? $res[0]['v'] : 0);
+			if($mysqlVersion && $mysqlVersion >= 5.7){
+				// 删除索引不存在时报错; 需手动处理;
+				//$content .= "\n".file_get_contents(INSTALL_PATH."data/fulltext.sql");
+			}else{
+				$content = str_ireplace('FULLTEXT ','', $content);
+			}
 		}
 		$sqlArr = sqlSplit($content);
 		foreach($sqlArr as $sql){
@@ -675,7 +707,7 @@ class installIndex extends Controller {
             'display' => 1,
             'system' => 1,
             'administrator' => 1,
-            'auth' => 'explorer.add,explorer.upload,explorer.view,explorer.download,explorer.share,explorer.remove,explorer.edit,explorer.move,explorer.serverDownload,explorer.search,explorer.unzip,explorer.zip,user.edit,user.fav,admin.index.dashboard,admin.index.setting,admin.index.loginLog,admin.index.log,admin.index.server,admin.role.list,admin.role.edit,admin.job.list,admin.job.edit,admin.member.list,admin.member.userEdit,admin.member.groupEdit,admin.auth.list,admin.auth.edit,admin.plugin.list,admin.plugin.edit,admin.storage.list,admin.storage.edit,admin.autoTask.list,admin.autoTask.edit',
+            'auth' => 'explorer.add,explorer.upload,explorer.view,explorer.download,explorer.share,explorer.shareLink,explorer.remove,explorer.edit,explorer.move,explorer.serverDownload,explorer.search,explorer.unzip,explorer.zip,user.edit,user.fav,admin.index.dashboard,admin.index.setting,admin.index.loginLog,admin.index.log,admin.index.server,admin.role.list,admin.role.edit,admin.job.list,admin.job.edit,admin.member.list,admin.member.userEdit,admin.member.userAuth,admin.member.groupEdit,admin.auth.list,admin.auth.edit,admin.plugin.list,admin.plugin.edit,admin.storage.list,admin.storage.edit,admin.autoTask.list,admin.autoTask.edit',
             'label' => 'label-green-deep',
             'sort' => 2,
         );
@@ -683,7 +715,7 @@ class installIndex extends Controller {
             'name' => LNG('admin.role.group'),
             'display' => 1,
             'system' => 1,
-            'auth' => 'explorer.add,explorer.upload,explorer.view,explorer.download,explorer.share,explorer.remove,explorer.edit,explorer.move,explorer.serverDownload,explorer.search,explorer.unzip,explorer.zip,user.edit,user.fav,admin.index.loginLog,admin.index.log,admin.member.list,admin.member.userEdit,admin.member.groupEdit,admin.auth.list',
+            'auth' => 'explorer.add,explorer.upload,explorer.view,explorer.download,explorer.share,explorer.shareLink,explorer.remove,explorer.edit,explorer.move,explorer.serverDownload,explorer.search,explorer.unzip,explorer.zip,user.edit,user.fav,admin.index.loginLog,admin.index.log,admin.member.list,admin.member.userEdit,admin.member.userAuth,admin.member.groupEdit,admin.auth.list',
             'label' => 'label-blue-deep',
             'sort' => 1,
         );
@@ -691,7 +723,7 @@ class installIndex extends Controller {
             'name' => LNG('admin.role.default'),
             'display' => 1,
             'system' => 1,
-            'auth' => 'explorer.add,explorer.upload,explorer.view,explorer.download,explorer.share,explorer.remove,explorer.edit,explorer.move,explorer.serverDownload,explorer.search,explorer.unzip,explorer.zip,user.edit,user.fav',
+            'auth' => 'explorer.add,explorer.upload,explorer.view,explorer.download,explorer.share,explorer.shareLink,explorer.remove,explorer.edit,explorer.move,explorer.serverDownload,explorer.search,explorer.unzip,explorer.zip,user.edit,user.fav',
             'label' => 'label-blue-normal',
             'sort' => 0,
         );

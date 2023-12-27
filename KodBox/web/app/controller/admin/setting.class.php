@@ -35,19 +35,16 @@ class adminSetting extends Controller {
 		if (!$data) {
 			show_json(LNG('explorer.error'), false);
 		}
-		$setting = array();
-		foreach ($data as $key => $value) {
-			$setting[$key] = $value;
-		}
 		
-		$postMax = get_post_max();
-		if($setting['chunkSize']*1024*1024  >= $postMax){
-			$sizeTips = ($postMax/(1024*1024)) .'MB';
-			show_json(LNG('admin.setting.transferChunkSizeDescError1').
-			":$sizeTips,<br/>".LNG('admin.setting.transferChunkSizeDescError2'),false);
+		if (isset($data['chunkSize'])) {
+			$postMax = get_post_max();
+			if($data['chunkSize']*1024*1024  >= $postMax){
+				$sizeTips = ($postMax/(1024*1024)) .'MB';
+				show_json(LNG('admin.setting.transferChunkSizeDescError1').
+				":$sizeTips,<br/>".LNG('admin.setting.transferChunkSizeDescError2'),false);
+			}
 		}
-
-		Model('SystemOption')->set($setting);
+		Model('SystemOption')->set($data);
 		show_json(LNG('explorer.success'));
 	}
 	
@@ -151,7 +148,7 @@ class adminSetting extends Controller {
 	
 	// 清理插件目录下的空文件夹;
 	private function removeEmptyFolder(){
-		$info  = IO::infoFull(IO_PATH_SYSTEM_TEMP.'plugin');
+		$info  = IO::infoFullSimple(IO_PATH_SYSTEM_TEMP.'plugin');
 		if (!$info || !$info['sourceID'] || !$info['parentLevel']) return;
 		$where = array('parentLevel'=>array('like',$info['parentLevel'].'%'),'size'=>0);
 		$lists = Model("Source")->field('sourceID,name')->where($where)->limit(5000)->select();
@@ -164,7 +161,7 @@ class adminSetting extends Controller {
 	// 清理文件夹;
 	private function removeFolder($folder,$children=false){
 		$model = Model("Source");
-		$pathInfo = IO::infoFull(IO_PATH_SYSTEM_TEMP . $folder);
+		$pathInfo = IO::infoFullSimple(IO_PATH_SYSTEM_TEMP . $folder);
 		if(!$folder || !$pathInfo || !$pathInfo['sourceID']) return;
 		if(!$children){$model->removeNow($pathInfo['sourceID'],false);return;}
 		
@@ -183,9 +180,10 @@ class adminSetting extends Controller {
 	public function server(){
 		$data = Input::getArray(array(
 			'tab'	 => array('default'=>'', 'aliasKey'=>'type'),
-			'action' => array('check'=>'in', 'param'=>array('get', 'phpinfo', 'save', 'task', 'clear'))
+			'action' => array('check'=>'in', 'param'=>array('get', 'pinfo', 'save', 'task', 'clear'))
 		));
 		$function = ($data['type'] ? $data['type'] : 'srv') . ucfirst($data['action']);
+		// srvGet/cacheSave/dbSave/recoverySave
 		Action('admin.server')->$function();
 	}
 

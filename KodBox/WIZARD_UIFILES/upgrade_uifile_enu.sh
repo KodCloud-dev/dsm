@@ -276,78 +276,9 @@ PKG_DIR="kodbox"
 WEBSITE_ROOT="/var/services/web_packages/$PKG_DIR"
 INFO_FILE="/usr/syno/etc/packages/$PKG_NAME/$PKG_DIR.conf"
 CONF_FILE="config/setting_user.php"
-MIGRATE_DB_VERSION="0134"
 INIT_DB_NAME="kodbox"
 INIT_DB_USER="kodbox_user"
 
-CustomMainInstall()
-{
-	if [ -d "$BACKUP_PATH" ]; then
-		GEN_KOD_CONF "$BACKUP_PATH"
-	fi
-}
-
-GEN_KOD_CONF()
-{
-	local path="$1"
-	# before 0122, no version value record
-	local version=$(get_key_value "$INFO_FILE" "version")
-	if [ ! -s "$path/$CONF_FILE" ] && [ -z "$version" ]; then
-		# We need to add back the setting_user.php
-		echo "$KOD_CONF_FILE" | openssl enc -base64 -d > "$path/$CONF_FILE"
-		sed -i "s|KDB_NAME|kodbox|g" "$path/$CONF_FILE"
-		sed -i "s|KDB_USER|kodbox_user|g" "$path/$CONF_FILE"
-		sed -i "s|KDB_PWD||g" "$path/$CONF_FILE"
-	fi
-}
-
-
-CustomParseDBConf()
-{
-	local path="$1"
-	local db_info="$2"
-	local grep_info="$3"
-	local info_output=""
-
-	if [ -s "$path/$CONF_FILE" ]; then
-		info_output=$(grep "$grep_info" "$path/$CONF_FILE" | cut -d\' -f4 | UnQuotePHP)
-	fi
-
-	if [ -z "$info_output" ];then
-		info_output="$(CustomGetValueFromMetaFile "$db_info")"
-	fi
-
-	echo "$info_output"
-}
-
-CustomGetDBName()
-{
-	local db_name=$(CustomParseDBConf "$1" "db_name" "DB_NAME")
-	if [ -z "$db_name" ]; then
-		db_name="$pkgwizard_db_name"
-	fi
-	echo "$db_name"
-}
-
-CustomGetDBUser()
-{
-	local db_user=$(CustomParseDBConf "$1" "db_user" "DB_USER")
-	if [ -z "$db_user" ]; then
-		db_user="$pkgwizard_db_user_account"
-	fi
-	echo "$db_user"
-
-}
-
-CustomGetDBPass()
-{
-	CustomParseDBConf "$1" "db_pass" "DB_PASSWORD"
-}
-
-UnQuotePHP()
-{
-	sed -e "s|\\\\'|'|g" -e 's|\\\\|\\|g'
-}
 PageUpgradeRestricted()
 {
 	manual_download_url="https://sy.to/3werr"

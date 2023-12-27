@@ -16,7 +16,6 @@ define('GLOBAL_DEBUG_LOG_ALL',0);//0 or 1
 
 @ini_set('date.timezone', 'Asia/Shanghai');
 @date_default_timezone_set('Asia/Shanghai');
-// @date_default_timezone_set(@date_default_timezone_get());
 // $f="/Library/WebServer/Documents/localhost/kod/doc/tools/xhprof/load.php";if(file_exists($f)){include($f);}
 
 if(GLOBAL_DEBUG){
@@ -63,6 +62,7 @@ define('LANGUAGE_PATH', BASIC_PATH .'config/i18n/');//多语言目录
 define('KOD_SITE_ID',substr(md5(BASIC_PATH),0,5));
 define('SESSION_ID','KOD_SESSION_ID');
 define('REQUEST_METHOD',strtoupper($_SERVER['REQUEST_METHOD']));
+define("REQUEST_ID",substr(md5(TIME_FLOAT),0,4));
 
 include(FUNCTION_DIR.'common.function.php');
 include(FUNCTION_DIR.'web.function.php');
@@ -90,8 +90,8 @@ if (strtoupper(substr(PHP_OS, 0,3)) === 'WIN') {
 	$config['systemOS']='linux';
 	$config['systemCharset']='utf-8';
 }
-
-if(!defined('HOST')){		define('HOST',get_host());}
+// 可以自定义域名,定义在config/define.php中,避免升级后被覆盖; 例如: define('HOST','https://demo.kodcloud.com/');
+if(!defined('HOST')){		define('HOST',get_host());} 
 if(!defined('WEB_ROOT')){	define('WEB_ROOT',webroot_path(BASIC_PATH) );}
 if(!defined('APP_HOST')){	define('APP_HOST',HOST.str_replace(WEB_ROOT,'',BASIC_PATH));} //程序根目录
 

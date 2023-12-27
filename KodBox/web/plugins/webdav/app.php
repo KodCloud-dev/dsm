@@ -41,16 +41,25 @@ class webdavPlugin extends PluginBase{
 			"config" 	=> array("check"=>"require"),
 		));		
 		$config = json_decode($data['config'], true);
+		$configBefore = Model('Storage')->getConfig($data['id']); // 未修改密码情况处理;
+		if($config['password'] == str_repeat('*',strlen($configBefore['password']))){
+			$config['password'] = $configBefore['password'];
+		}
+		
 		$dav  = new WebdavClient($config);
 		$data = $dav->check();
 		if(!$data['status']){
-			show_json('连接失败,请检查连接URL,或用户名密码是否正确;<br/>'.$data['header'][0],false);
-		}	
+			$message = _get($data,'data.message');
+			$message = $message ? $message.'!':'';
+			show_json($message.$data['header'][0].'<br/>连接失败,请检查连接URL,或用户名密码是否正确.',false);
+		}
 	}
 	
 	public function route(){
 		include_once($this->pluginPath.'php/webdavClient.class.php');
 		include_once($this->pluginPath.'php/pathDriverWebdav.class.php');
+		include_once($this->pluginPath.'php/pathDriverNFS.class.php');
+		include_once($this->pluginPath.'php/pathDriverSamba.class.php');
 
 		if(strtolower(MOD.'.'.ST) == 'plugin.index') exit;
 		$this->_checkConfig();
@@ -73,6 +82,7 @@ class webdavPlugin extends PluginBase{
 		require($this->pluginPath.'php/webdavServerKod.class.php');
 		register_shutdown_function(array(&$this, 'endLog'));
 		
+		define('KOD_FROM_WEBDAV',1);
 		$this->allowCROS();
 		$this->dav = new webdavServerKod($uriDav);
 		$this->debug($dav);

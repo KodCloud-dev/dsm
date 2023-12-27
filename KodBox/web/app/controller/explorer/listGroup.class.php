@@ -13,16 +13,94 @@ class explorerListGroup extends Controller{
 	}
 
 	public function groupSelf($pathInfo){//获取组织架构的用户和子组织；
-		$groupInfo 	= Session::get("kodUser.groupInfo");
-		$groupInfo  = array_sort_by($groupInfo,'groupID');
-		return $this->groupArray($groupInfo);
+		$groupArray = Session::get("kodUser.groupInfo");
+		$groupArray = array_sort_by($groupArray,'groupID');
+		$groupArray = $this->groupSelfLimit($groupArray);
+		$listData 	= $this->groupArray($groupArray);
+		$this->groupSelfAppendAllow($listData);
+		return $listData;
+	}
+	
+	// 我所在的部门, 罗列自己有权限的部门(通路)
+	public function groupSelfAppendAllow(&$listData){
+		if(intval($this->in['page']) > 1) return;// 第一页才罗列;
+		$groupArray = Action('filter.userGroup')->userGroupRootShow();
+	    if(!$groupArray || empty($groupArray[0])) return false;
+
+		$groupList = array();$groupListArr = array();
+		foreach ($listData as $key => $item) {
+			$item['sourceRootSelf'] = 'self';
+			$groupList[] = $item;
+			$groupListArr[$item['targetID']] = $item;
+			unset($listData[$key]);
+		}
+				
+		$groupChild = $this->modelGroup->where(array('parentID'=>$groupArray[0]))->select();
+		$groupAdd 	= $this->groupArray($groupChild);
+		$groupAddTo = array();// 去除重复已在该部门的部门;
+		foreach ($groupAdd as $item){
+			if(isset($groupListArr[$item['targetID']])){continue;}
+			$groupAddTo[] = $item;
+		}
+		
+		$listData['groupList'] = $groupList;
+		$listData['folderList']= $groupAddTo;
+		$desc = '('.LNG('explorer.toolbar.myGroupAllowDesc').')';
+		$listData['groupShow'] = array(
+			array('type'=>'childGroupSelf', 'title'=>LNG('explorer.toolbar.myGroup'),"filter"=>array('sourceRootSelf'=>'self')),
+			array('type'=>'childGroupAllow','title'=>LNG('explorer.toolbar.myGroupAllow'),"desc"=>$desc,"filter"=>array('sourceRootSelf'=>'!=self')),
+		);
+		if(count($listData['folderList']) == 0){unset($listData['groupShow']);}
+	}
+	
+	// 部门层级限制处理; 超过层级限制的部门,展示该部门在限制层级时的部门通路;
+	private function groupSelfLimit($groupArray){
+		$option = Model('SystemOption')->get();
+		if($option['groupSpaceLimit'] != '1') return $groupArray;
+		
+		$levelMax = intval($option['groupSpaceLimitLevel']);
+		$groupMap = array_to_keyvalue($groupArray,'groupID');
+		$groupArray = array();
+		foreach ($groupMap as $groupID => $item) {
+			$level = explode(',',trim($item['parentLevel'],',')); // -1 + 1(去掉0;加上自己; 最后一层是自己)
+			if(count($level) <= $levelMax){$groupArray[$groupID] = $item;continue;}
+
+			$autoGroupID = $level[$levelMax];
+			if(!isset($groupMap[$autoGroupID])){
+				$info = $this->modelGroup->getInfoSimple($autoGroupID);
+				$groupMap[$autoGroupID] = array(
+					'groupID'		=> $info['groupID'],
+					'groupName'		=> $info['name'],
+					'parentLevel'	=> $info['parentLevel']
+				);
+			}
+			if(!is_array($groupMap[$autoGroupID])){continue;}
+			$groupArray[$autoGroupID] = $groupMap[$autoGroupID];
+		}
+		// pr($groupMap,$groupArray);exit;
+		return $groupArray;
 	}
 	
 	// 是否允许罗列部门的子部门;
-	private function enableListGroup($groupID){
+	private function enableListGroup($groupID,&$data){
 		$option = Model('SystemOption')->get();
+		if($option['groupSpaceLimit'] == '1'){
+			$groupInfo = $this->modelGroup->getInfoSimple($groupID);
+			$level = explode(',',trim($groupInfo['parentLevel'],',')); // -1 + 1(去掉0;加上自己)
+			if(count($level) >= intval($option['groupSpaceLimitLevel'])){return false;}
+		}
+		
 		if( !isset($option['groupListChild']) ) return true;
 		
+		// 仅左侧树目录罗列子部门,不罗列文件文件夹; 文件区域不罗列子部门,仅罗列文件文件夹
+		if($option['groupListChild'] == '2'){
+			if($this->in['fromType'] == 'tree'){
+				$data['folderList'] = array();$data['fileList']   = array();
+				return true;
+			}
+			return false;
+		}
+				
 		$listGroup = $option['groupListChild']=='1';
 		if(!$listGroup) return false;
 		if($groupID == '1'){
@@ -36,7 +114,8 @@ class explorerListGroup extends Controller{
 		$groupArray = array_sort_by($groupArray,'sort');// 排序处理;
 		$groupArray	= array_to_keyvalue($groupArray,'groupID');//自己所在的组
 		$this->_filterDisGroup($groupArray);	// 过滤已禁用部门
-		$group = array_remove_value(array_keys($groupArray),1);
+		// $group = array_remove_value(array_keys($groupArray),1);
+		$group = array_keys($groupArray);
 		if(!$group) return array();
 
 		$groupSource = $this->model->sourceRootGroup($group);
@@ -44,26 +123,23 @@ class explorerListGroup extends Controller{
 		$result = array();
 		foreach($groupArray as $group){ // 保持部门查询结构的顺序;
 			$groupID = $group['groupID'];
-			if($groupID == '1') continue; // 去除根部门
+			// if($groupID == '1') continue; // 去除根部门
 			if(!isset($groupSource[$groupID])) continue;
 			
-			$pathInfo = $groupSource[$groupID];			
+			$groupInfo = Model('Group')->getInfo($groupID);
+			$pathInfo  = $groupSource[$groupID];			
 			$pathInfo['sourceRoot'] = 'groupPath';
+			$pathInfo['hasGroup']   = $groupInfo ? $groupInfo['hasChildren']:0;
 			$pathInfo['pathDisplay']= $pathInfo['groupPathDisplay'];
 			if(!$pathInfo['auth']){
 				$pathInfo['auth'] = Model("SourceAuth")->authDeepCheck($pathInfo['sourceID']);
 			}
-			if(!_get($GLOBALS,'isRoot')){
+			
+			$userRootShow = _get($GLOBALS,'isRoot') && $GLOBALS['config']["ADMIN_ALLOW_SOURCE"];
+			if(!$userRootShow){
 				if( !$pathInfo['auth'] || $pathInfo['auth']['authValue'] == 0){ // 放过-1; 打开通路;
 					continue;// 没有权限;
 				}
-			}
-			
-			// 没有子文件; 则获取是否有子部门;
-			if( !$pathInfo['hasFolder'] && !$pathInfo['hasFile'] ){
-				$groupInfo = Model('Group')->getInfo($groupID);
-				$pathInfo['hasFolder']  = $groupInfo['hasChildren'];
-				$pathInfo['hasFile'] 	= $groupInfo['hasChildren'];
 			}
 			$result[] = $pathInfo;
 		}
@@ -91,16 +167,16 @@ class explorerListGroup extends Controller{
 		$pathInfo = $data['current'];
 		if(!$pathInfo || _get($pathInfo,'targetType') != 'group') return false;
 		if(isset($pathInfo['shareID'])) return false;
+		if(intval($this->in['page']) > 1) return;// 第一页才罗列;
 
 		//不是根目录
 		$parents = $this->model->parentLevelArray($pathInfo['parentLevel']);
 		if(count($parents) != 0) return false;
-		if(!$this->enableListGroup($pathInfo['targetID'])) return;
+		if(!$this->enableListGroup($pathInfo['targetID'],$data)) return;
 		
 		$groupList  = $this->modelGroup->where(array('parentID'=>$pathInfo['targetID']))->select();
 		$groupListAdd  = $this->groupArray($groupList);
 		$data['pageInfo']['totalNum'] += count($groupListAdd);
-		if(intval($this->in['page']) > 1) return;// 第一页才罗列;
 
 		$data['groupList'] = $groupListAdd;
 		$data['groupShow'] = array(
@@ -120,6 +196,7 @@ class explorerListGroup extends Controller{
 			$userInfo = Model('User')->getInfo($userID);
 			$groupSelf = $userInfo['groupInfo'];
 		}
+		if(!$groupSelf) return false;
 		
 		// 部门文件夹或子文件夹没有针对自己设置权限,向上级部门回溯;
 		$groupSelf 	= array_to_keyvalue($groupSelf,'groupID');//自己所在的组

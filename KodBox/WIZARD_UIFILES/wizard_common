@@ -85,11 +85,6 @@ CustomWizCreate()
 	:
 }
 
-CustomMainInstall()
-{
-	:
-}
-
 CustomGetValueFromMetaFile()
 {
 	local key="$1"
@@ -107,33 +102,6 @@ CustomGetValueFromMetaFile()
 		return
 	fi
 	get_key_value "$record_file" "$key"
-}
-
-GetPreviousPkgBuildNumber()
-{
-	local old_pkg_ver="$SYNOPKG_OLD_PKGVER"
-	if [ -z "${old_pkg_ver}" ]; then
-		# SYNOPKG_OLD_PKGVER does not exist in un-install stage of upgrade
-		old_pkg_ver="$SYNOPKG_PKGVER"
-	fi
-
-	local old_build_number=$(echo "$old_pkg_ver" | cut -d- -f2)
-	echo "$old_build_number"
-}
-
-IsPreviousVersionBelowDSM7()
-{
-	[ "$(GetPreviousPkgBuildNumber)" -lt "1000" ]
-}
-
-GetWebsiteRootOfPreviousVersion()
-{
-	local prev_website_root="$WEBSITE_ROOT"
-	if IsPreviousVersionBelowDSM7; then
-		prev_website_root=$(echo $WEBSITE_ROOT | sed "s/web_packages/web/g")
-	fi
-
-	echo "${prev_website_root}";
 }
 
 GetBackupPath()

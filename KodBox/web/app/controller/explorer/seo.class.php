@@ -40,10 +40,11 @@ class explorerSeo extends Controller{
 	 * 3. 外链分享文件夹列表;
 	 */
 	public function siteMap(){
-		if($this->config['settings']['allowSEO'] != 1){
+		if($this->config['settings']['allowSEO'] != 1){ // keep=1
 			header('HTTP/1.1 404 Not Found');
 			return show_tips("Not allow robots!");
 		}
+		if(!defined("USER_ID")){define("USER_ID",0);}
 		switch(ST){
 			case 'index': $this->shareList();exit;break;
 			case 'share': $this->shareView(ACT);exit;break;
@@ -83,7 +84,6 @@ class explorerSeo extends Controller{
 	
 	// 分享列表;
 	private function shareList(){
-		if(!defined('USER_ID')){define('USER_ID',0);}
 		$title = LNG('explorer.share.linkTo');
 		I18n::set('title',$title.' - ');
 		$model = Model('Share');
@@ -188,7 +188,7 @@ class explorerSeo extends Controller{
 
 		$viewPath   = trim(_get($this->in,'view',''),'/');
 		$sourcePath = $shareInfo['sourcePath'].'/'.$viewPath;
-		$pathInfo = IO::infoFull($sourcePath);
+		$pathInfo = IO::infoFullSimple($sourcePath);
 		if(!$pathInfo) return $this->displayError(LNG('common.pathNotExists'));
 		IO::fileOut($pathInfo['path']);exit;
 	}
@@ -274,7 +274,7 @@ class explorerSeo extends Controller{
 		}
 		if(!$pathInfo) return '';
 		$link = $this->shareLink($item);
-		$user = _get($item['userInfo'],'nickName',_get($item['userInfo'],'name'));
+		$user = $item['nickName'] ? $item['nickName']:$item['name'];
 
 		$time = date('Y-m-d H:i',$item['createTime']);	
 		$size = size_format($pathInfo['size']);

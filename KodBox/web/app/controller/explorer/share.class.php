@@ -11,21 +11,17 @@ class explorerShare extends Controller{
 	function __construct(){
 		parent::__construct();
 		$this->model  = Model('Share');
-		$notCheck = array('link','file','pathParse','fileDownloadRemove');
+		$notCheck = array('link','file','pathParse','fileDownloadRemove','unzipListHash','fileGetHash');
 		// 检测并处理分享信息
-		if( equal_not_case(ST,'share') && 
-			!in_array_not_case(ACT,$notCheck) ){
+		if( strtolower(ST) == 'share' && !in_array_not_case(ACT,$notCheck) ){
 			$shareID = $this->parseShareID();
 			$this->initShare($shareID);
-			if(equal_not_case(MOD.'.'.ST,'explorer.share')){
-				$this->authCheck();
-			}
+			if(strtolower(MOD.'.'.ST) == 'explorer.share'){$this->authCheck();}
 		}
 	}
 
 	// 自动解析分享id; 通过path或多选时dataArr;
 	private function parseShareID(){
-		if(!defined('USER_ID')){define('USER_ID',0);}
 		$shareID = $this->in['shareID'];
 		if($shareID) return $shareID;
 		$thePath = $this->in['path'];
@@ -52,6 +48,8 @@ class explorerShare extends Controller{
 		}
 		return urlApi('explorer/share/file',"hash={$hash}".$addParam);
 	}
+	
+	// 构造加密链接,相同文件每次一样,确保浏览器能够缓存;
 	public function linkFile($file){
 		$pass = Model('SystemOption')->get('systemPassword');
 		$hash = Mcrypt::encode($file,$pass,false,'kodcloud');
@@ -59,9 +57,7 @@ class explorerShare extends Controller{
 	}
 	
 	public function linkSafe($path,$downFilename=''){
-		if(!defined('USER_ID') || !USER_ID){
-			return $this->link($path,$downFilename);
-		}
+		if(!Session::get('kodUser')){return $this->link($path,$downFilename);}
 		if(!$path || !$info = IO::info($path)) return;
 		$link = Action('user.index')->apiSignMake('explorer/index/fileOut',array('path'=>$path));
 		
@@ -71,7 +67,6 @@ class explorerShare extends Controller{
 	}
 	
 	public function linkOut($path,$token=false){
-		if(!defined("USER_ID")){define("USER_ID",0);}
 		$parse  = KodIO::parse($path);
 		$info   = IO::info($path);
 		$apiKey = 'explorer/index/fileOut';
@@ -91,20 +86,19 @@ class explorerShare extends Controller{
 	
 	public function file(){
 		if(!$this->in['hash']) return;
-		if(!defined('USER_ID')){define('USER_ID',0);}
-		$pass = Model('SystemOption')->get('systemPassword');
-		$path = Mcrypt::decode($this->in['hash'],$pass);
-		if(!$path || !IO::info($path)){
-			show_json(LNG('common.pathNotExists'),false);
-		}
-		$fileInfo = IO::info($path);
-		if($fileInfo['isDelete'] == '1'){
-		    show_json(LNG('explorer.pathInRecycle'),false);
-		}
-		//pr(IO::info($path));exit;
+		$path = $this->fileHash($this->in['hash']);
 		$isDownload = isset($this->in['download']) && $this->in['download'] == 1;
 		$downFilename = !empty($this->in['downFilename']) ? $this->in['downFilename'] : false;
 		IO::fileOut($path,$isDownload,$downFilename);
+	}
+	// 文件外链解析;
+	private function fileHash($hash){
+		if(!$hash || strlen($hash) > 5000) return;
+		$path = Mcrypt::decode($hash,Model('SystemOption')->get('systemPassword'));
+		$fileInfo = $path ? IO::info($path) : false;
+		if(!$fileInfo){show_json(LNG('common.pathNotExists'),false);}
+		if($fileInfo['isDelete'] == '1'){show_json(LNG('explorer.pathInRecycle'),false);}
+		return $path;
 	}
 	
 	/**
@@ -113,9 +107,7 @@ class explorerShare extends Controller{
 	 */
 	public function sharePathInfo($path,$encode=false,$infoChildren=false){
 		$parse = KodIO::parse($path);
-		if(!$parse || $parse['type'] != KodIO::KOD_SHARE_LINK){
-			return false;
-		}
+		if(!$parse || $parse['type'] != KodIO::KOD_SHARE_LINK){return false;}
 		$check = ActionCallHook('explorer.share.initShare',$parse['id']);
 		if(is_array($check)){
 			$GLOBALS['explorer.sharePathInfo.error'] = $check['data'];
@@ -130,6 +122,7 @@ class explorerShare extends Controller{
 		
 		// 仅文件,判断预览;
 		if(	$result['type'] == 'file' && 
+			$this->share['options'] && 
 			$this->share['options']['notDownload'] == '1' &&
 			$this->share['options']['notView'] == '1'){
 			return false;
@@ -172,7 +165,7 @@ class explorerShare extends Controller{
 	 * 下载次数，预览次数记录
 	 */
 	public function initShare($hash=''){
-		if($this->share) return;
+		if($this->share && !isset($GLOBALS['isRootCall'])) return;
 		$this->share = $share = $this->model->getInfoByHash($hash);
 		if(!$share || $share['isLink'] != '1'){
 			$this->showError(LNG('explorer.share.notExist'),30100);
@@ -180,6 +173,8 @@ class explorerShare extends Controller{
 		if($share['sourceInfo']['isDelete'] == '1'){
 			$this->showError(LNG('explorer.share.notExist'),30100);
 		}
+		if(isset($GLOBALS['isRootCall']) && $GLOBALS['isRootCall']){return;} //后台任务队列获取属性,不做判断;
+		
 		//外链分享有效性处理: 当分享者被禁用,没有分享权限,所在文件不再拥有分享权限时自动禁用外链分享;
 		if(!Action('explorer.authUser')->canShare($share)){
 			$userInfo = Model('User')->getInfoSimpleOuter($share['userID']);
@@ -211,7 +206,7 @@ class explorerShare extends Controller{
 		//检测密码
 		$passKey  = 'Share_password_'.$share['shareID'];
 		if( $share['password'] ){
-			if( isset($this->in['password']) ){
+			if( isset($this->in['password']) && strlen($this->in['password']) < 500 ){
 				$code = md5(BASIC_PATH.Model('SystemOption')->get('systemPassword'));
 				$pass = Mcrypt::decode(trim($this->in['password']),md5($code));
 				
@@ -239,9 +234,10 @@ class explorerShare extends Controller{
 	 * 下载次数，预览次数记录
 	 */
 	private function authCheck(){
+		$ACT   = strtolower(ACT);
 		$share = $this->share;
 		$where = array("shareID"=>$share['shareID']);
-		if( equal_not_case(ACT,'get') ){
+		if($ACT == 'get'){
 			$this->model->where($where)->setAdd('numView');
 		}
 		//权限检测；是否允许下载、预览、上传;
@@ -263,19 +259,21 @@ class explorerShare extends Controller{
 		}
 		if( $share['options'] && 
 			$share['options']['canUpload'] != '1' && 
-			equal_not_case(ACT,'fileUpload') ){
+			in_array($ACT,array('fileupload','mkdir','mkfile')) ){
 			$this->showError(LNG('explorer.share.noUploadTips'),false);
 		}
 		if((equal_not_case(ACT,'fileOut') && $this->in['download']=='1') ||
 			equal_not_case(ACT,'zipDownload') || 
-			equal_not_case(ACT,'fileDownload')){
+			equal_not_case(ACT,'fileDownload') ){
+			// 下载计数; 分片下载时仅记录起始为0的项(并忽略长度为0的请求),忽略head请求;
+			if(!Action('admin.log')->checkHttpRange()){return;}
 			$this->model->where($where)->setAdd('numDownload');
 		}
 	}
 	/**
 	 * 检测并获取真实路径;
 	 */
-	private function parsePath($path){
+	private function parsePath($path,$allowNotExist=false){
 		if(request_url_safe($path)) return $path;//压缩包支持;
 		$rootSource = $this->share['sourceInfo']['path'];
 		$parse = KodIO::parse($path);
@@ -284,8 +282,9 @@ class explorerShare extends Controller{
 			show_json(LNG('common.noPermission'),false);
 		}
 		
-		$pathInfo = IO::infoFull($rootSource.$parse['param']);
+		$pathInfo = IO::infoFullSimple($rootSource.$parse['param']);
 		if(!$pathInfo){
+			if($allowNotExist){return $rootSource.$parse['param'];}
 			show_json(LNG('common.noPermission'),false);
 		}
 		return $pathInfo['path'];
@@ -297,9 +296,25 @@ class explorerShare extends Controller{
 
 		$result = array();
 		for ($i=0; $i < count($fileList); $i++) {
-			$path 	= $this->parsePath($fileList[$i]['path']);
-			$result[] = $this->shareItemInfo(IO::infoWithChildren($path));
+			$path = $this->parsePath($fileList[$i]['path']);
+			if($this->in['getChildren'] == '1'){
+				$pathInfo = IO::infoWithChildren($path);
+			}else{
+				$pathInfo = IO::infoFull($path);
+			}
+			if(!is_array($pathInfo)){continue;}
+			if(!array_key_exists('hasFolder',$pathInfo)){
+				$has = IO::has($path,true);
+				if(is_array($has)){$pathInfo = array_merge($pathInfo,$has);}
+			}
+			
+			$pathInfoOut = $this->shareItemInfo($pathInfo);
+			if(is_array($pathInfo['fileInfo'])){$pathInfoOut['fileInfo'] = $pathInfo['fileInfo'];} // 用户hash获取等;
+			$pathInfoOut = Action('explorer.list')->pathInfoCover($pathInfoOut);//path参数需要是外链路径;
+			if(is_array($pathInfoOut['fileInfo'])){unset($pathInfoOut['fileInfo']);}
+			$result[] = $pathInfoOut;
 		}
+		
 		if(count($fileList) == 1){
 			// 单个文件属性; 没有仅用预览,则开放预览链接;
 			if($result[0]['type'] == 'file' &&  _get($this->share,'options.notDownload') != '1' ){
@@ -315,10 +330,8 @@ class explorerShare extends Controller{
 	//输出文件
 	public function fileOut(){
 		$path = rawurldecode($this->in['path']);//允许中文空格等;
-		// $path = $this->in['path']; // 路径中包含%20等字符允许.
-		if(request_url_safe($path)) {
-			header('Location:' . $path);exit;
-		} 
+		if(request_url_safe($path)){header('Location:'.$path);exit;}
+		
 		$path = $this->parsePath($path);
 		$isDownload = isset($this->in['download']) && $this->in['download'] == 1;
 		Hook::trigger('explorer.fileOut', $path);
@@ -338,19 +351,63 @@ class explorerShare extends Controller{
 		$this->in['download'] = 1;
 		$this->fileOut();
 	}
-	
-	public function fileUpload(){
-		$this->in['path'] = $this->parsePath($this->in['path']);
-		Action("explorer.upload")->fileUpload();
-	}
-	public function fileGet(){
-		$this->in['path'] = $this->parsePath($this->in['path']);
-		$this->in['pageNum'] = 1024 * 1024 * 10;
-		$result = ActionCallHook("explorer.editor.fileGet");
-		if($result['code']){
-			$result['data'] = $this->shareItemInfo($result['data']);
+	public function fileOutBy(){
+		$add   = rawurldecode($this->in['add']);
+		$path  = rawurldecode($this->in['path']);
+		if(request_url_safe($path)){header('Location:'.$path);exit;}
+		
+		$distPath = kodIO::pathTrue($path.'/../'.$add);
+		$this->in['path'] = rawurlencode($distPath);
+		if(isset($this->in['type']) && $this->in['type'] == 'getTruePath'){
+			show_json($distPath,true);
 		}
-		show_json($result['data'],$result['code'],$result['info']);
+		$this->fileOut();
+	}
+	
+	private function call($action){
+		$this->in['path'] = $this->parsePath($this->in['path'],true);
+		$self = $this;
+		ActionCallResult($action,function(&$res) use($self){
+			if(!$res['code'] || !$res['info'] || !is_string($res['info'])){return;}
+			$pathInfo = $self->shareItemInfo(IO::info($res['info']));
+			$res['info'] = $pathInfo['path'];
+		});		
+	}
+	public function fileUpload(){$this->call("explorer.upload.fileUpload");}
+	public function mkfile(){$this->call("explorer.index.mkfile");}
+	public function mkdir(){$this->call("explorer.index.mkdir");}
+	public function fileGet(){
+		$pageNum = 1024 * 1024 * 10;$self = $this;
+		$this->in['pageNum'] = isset($this->in['pageNum']) ? $this->in['pageNum'] : $pageNum;
+		$this->in['pageNum'] = $this->in['pageNum'] >= $pageNum ? $pageNum : $this->in['pageNum'];
+		$this->in['path'] = $this->parsePath($this->in['path']);
+		ActionCallResult("explorer.editor.fileGet",function(&$res) use($self){
+			if(!$res['code']){return;}
+			$res['data'] = $self->shareItemInfo($res['data']);
+			if(is_array($res['data']['fileInfo'])){unset($res['data']['fileInfo']);}
+		});
+	}
+	
+	// 压缩包内文本文件请求(不再做权限校验; 通过文件外链hash校验处理)
+	public function fileGetHash(){
+		$pageNum = 1024 * 1024 * 10;
+		$this->in['pageNum'] = isset($this->in['pageNum']) ? $this->in['pageNum'] : $pageNum;
+		$this->in['pageNum'] = $this->in['pageNum'] >= $pageNum ? $pageNum : $this->in['pageNum'];
+		// ActionCall("explorer.editor.fileGet");exit;
+
+		$url = $this->in['path'];
+		$urlInfo = parse_url_query($url);
+		if( !isset($urlInfo["explorer/share/unzipListHash"]) && 
+			!isset($urlInfo["accessToken"])){
+			show_json(LNG('common.pathNotExists'),false);
+		}
+		$index 	  = json_decode(rawurldecode($urlInfo['index']),true);
+		$zipFile  = $this->fileHash(rawurldecode($urlInfo['path']));
+		$filePart = IOArchive::unzipPart($zipFile,$index ? $index:'-1');
+		if(!$filePart || !IO::exist($filePart['file'])){
+			show_json(LNG('common.pathNotExists'),false);
+		}
+		Action("explorer.editor")->fileGetMake($filePart['file'],IO::info($filePart['file']),$url);
 	}
 	
 	public function pathList(){
@@ -366,15 +423,14 @@ class explorerShare extends Controller{
 			$data['thisPath'] = $path;
 		}else{
 			$allowPath = explode(',','{block:fileType}'); //允许的目录;虚拟目录;
-			if(!in_array($path,$allowPath)){
-				$this->parsePath($path); //校验path;
-			}
+			if(!in_array($path,$allowPath)){$this->parsePath($path);}
 			$data = Action('explorer.list')->path($path);
 		}
 
 		// 文件快捷方式处理;
 		if($data && $data['fileList']){
 			foreach($data['fileList'] as &$file){
+				if(is_array($file['fileInfo'])){unset($file['fileInfo']);}
 				$this->filterOexeContent($file);
 			}
 		}		
@@ -386,9 +442,18 @@ class explorerShare extends Controller{
 	 * 压缩和下载合并为同一方法
 	 */
 	public function zipDownload(){
-		if($this->in['zipClient'] == '1'){Action('explorer.index')->zipDownload();} 
-		$this->zipSupportCheck();
 		$dataArr = json_decode($this->in['dataArr'],true);
+		if($this->in['zipClient'] == '1'){
+			$result = Action('explorer.index')->zipDownloadClient($dataArr);
+			$sharePath = $this->share['sourcePath'];
+			$shareLink = "{shareItemLink:".$this->share['shareHash']."}/";
+			foreach($result as $i => $item){
+				if(!$item['filePath']){continue;}
+				$result[$i]['filePath'] = str_replace($sharePath,$shareLink,$item['filePath']);
+			}
+			show_json($result,true);return;
+		}
+		$this->zipSupportCheck();
 		foreach($dataArr as $i => $item){
 			$dataArr[$i]['path'] = $this->parsePath($item['path']);
 		}
@@ -403,6 +468,12 @@ class explorerShare extends Controller{
 		$this->in['path'] = $this->parsePath($this->in['path']);
 		Action('explorer.index')->unzipList();
 	}
+	public function unzipListHash(){
+		$this->zipSupportCheck();
+		$this->in['path'] = $this->fileHash($this->in['path']);
+		Action('explorer.index')->unzipList();
+	}
+
 	private function zipSupportCheck(){
 		$config = Model('SystemOption')->get();
 		if($config['shareLinkZip'] == '1') return true;
@@ -419,10 +490,11 @@ class explorerShare extends Controller{
 		$item['pathDisplay'] = $item['pathDisplay'] ? $item['pathDisplay']:$item['path'];
 
 		$field = array(
-			'name','path','type','size','ext',
+			'name','path','type','size','ext','searchTextFile',
 			'createUser','modifyUser','createTime','modifyTime','sourceID',
-			'hasFolder','hasFile','children','targetType','targetID','pageInfo',
-			'base64','content','charset','oexeContent','fileInfoMore','fileThumb',
+			'hasFolder','hasFile','children','targetType','targetID','pageInfo','searchContentMatch',
+			'base64','content','charset','oexeContent','fileInfoMore','fileInfo','fileThumb',
+			// 'isReadable','isWriteable',//(不处理, 部门文件夹分享显示会有区分)
 		);
 		$theItem = array_field_key($item,$field);
 		$path 	 = KodIO::makePath(KodIO::KOD_SHARE_LINK,$this->share['shareHash']);
@@ -431,9 +503,11 @@ class explorerShare extends Controller{
 		$theItem['path'] = rtrim($path,'/').'/'.$theItem['pathDisplay'];
 		$theItem['pathDisplay'] = $name.'/'.$theItem['pathDisplay'];
 
-		if($theItem['type'] == 'folder'){
-			$theItem['ext'] = 'folder';
+		if(is_array($item['metaInfo'])){
+			$picker = 'user_sourceCover';
+			$theItem['metaInfo'] = array_field_key($item['metaInfo'],explode(',',$picker));
 		}
+		if($theItem['type'] == 'folder'){$theItem['ext'] = 'folder';}
 		if(is_array($theItem['createUser'])) $theItem['createUser'] = $this->filterUserInfo($theItem['createUser']);
 		if(is_array($theItem['modifyUser'])) $theItem['modifyUser'] = $this->filterUserInfo($theItem['modifyUser']);
 		return $theItem;
@@ -464,13 +538,7 @@ class explorerShare extends Controller{
 	}
 	private function parseName($name){
 		$len = mb_strlen($name);
-		if($len > 3) {
-			$len = ($len > 5 ? 5 : $len) - 2;
-			$name = mb_substr($name, 0, 2) . str_repeat('*', $len);	// AA***
-		}else{
-			$name = mb_substr($name, 0, 1) . str_repeat('*', $len - 1);	// A**
-		}
-		return $name;
+		return $len > 2 ? mb_substr($name,0,2).'***':$name;
 	}
 
 	/**

@@ -35,10 +35,17 @@ class kodRarArchive {
 		}else if(strstr($os,'win') ){
 			$file .= '.exe';	// win
 		}else if(strstr($os,'linux') ){
-			$result = shell_exec('apk --version');
-			if(strstr($result,'apk')){ // apilin 
-				$file .= '_linux';	// win
-			}
+			$name = get_path_this($file);	// 优先调用系统服务（部分服务器无法运行kod中的执行文件）
+		    if(is_executable('/usr/bin/'.$name)) {
+		        $file = '/usr/bin/'.$name;
+		    }else if(is_executable('/usr/local/bin/'.$name)) {
+		        $file = '/usr/local/bin/'.$name;
+		    }else{
+    			$result = shell_exec('apk --version');
+    			if(strstr($result,'apk')){ // apilin 
+    				$file .= '_linux';	// win
+    			}
+		    }
 		}
 		
 		
@@ -57,7 +64,7 @@ class kodRarArchive {
 			@putenv('LC_ALL=en_US.UTF-8');
 		}
 		$result = shell_exec($cmd);
-		//debug_out($cmd,$result);
+		//pr($cmd,$result);exit;
 		if(!strstr($result,'Copyright')){
 			return array('code'=>false,'data'=>'[shell_exec error!] No Result!<br>'.LNG('explorer.unzipRarTips'));
 		}
@@ -69,8 +76,7 @@ class kodRarArchive {
 	 */
 	static function extract($file,$dest,$ext,$partName=false,$passwd=false) {
 		$dest_before = $dest;
-		$dest = TEMP_FILES.md5(rand_string(40).time()).'/';
-		mk_dir($dest);
+		$dest = $dest_before.md5(rand_string(40).time()).'/';mk_dir($dest);
 		$passwd  = $passwd ?" -p".escapeShell($passwd).' ':'';
 		if($ext == 'rar'){
 			$param = ' -y '.$passwd.escapeShell($file).' '.escapeShell($dest).' ';
@@ -109,8 +115,9 @@ class kodRarArchive {
 			$result = self::run($command);
 		}
 		
-		//echo "<pre>";var_dump($result,$command);exit;
+		//echo "<pre>";var_dump($result,$command,$ext,$partName);exit;
 		if(!$result['code']){
+		    del_dir($dest);
 			return $result;
 		}
 
@@ -131,7 +138,7 @@ class kodRarArchive {
 		$arr = dir_list($dest);
 		foreach($arr as $f){
 			$itemPath = str_replace(array($dest,"\\"),array('','/'),$f);
-			$itemPath = unzip_pre_name($itemPath);
+			//$itemPath = unzip_pre_name($itemPath); // 已经自动处理为系统编码了,就不需要再转码(windows下 rar)
 			$from = $dest.get_path_father($itemPath).get_path_this($f);
 			if(strstr($itemPath,'/') == false){
 				$from = $dest.get_path_this($f);
@@ -140,13 +147,12 @@ class kodRarArchive {
 				@rename($from,$dest.$itemPath);
 			}
 		}
-		move_path($dest,$dest_before);
-		del_dir(rtrim($dest,'/'));
+		move_path($dest,$dest_before);del_dir($dest);
 		return $result;
 	}
 	
-	static function listContent($file) {
-		$ext = !empty($GLOBALS['ARCHIVE_FILE_EXT']) ? $GLOBALS['ARCHIVE_FILE_EXT'] : get_path_ext($file);
+	static function listContent($file,$ext=''){
+		$ext = $ext ? $ext : get_path_ext($file);
 		if($ext == 'rar'){
 			return self::listContentRar($file);
 		}else{

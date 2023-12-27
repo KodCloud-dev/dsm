@@ -13,20 +13,24 @@
  */
 function Model($name = '', $tablePrefix = '', $connection = '') {
     static $cache = array();
+	if($name === '_destroy_'){$cache = array();return;} // 清除缓存;
     $guid = strtolower($tablePrefix . '_' . $name);
-	if (isset($cache[$guid])) return $cache[$guid];
-	
+	if(is_string($connection)){
+		$guid .= '_'.$connection;
+	}else if($connection && is_array($connection)){
+		return new ModelBase($name, $tablePrefix, $connection);
+	}
+
+	// 没有该类，则为表名或空model
+	if(!$connection){$connection = $GLOBALS['config']['database'];}
+	if(isset($cache[$guid])) return $cache[$guid];
 	if($name){//有该类的情况(已经引入了类)
 		$name = strtoupper($name[0]).substr($name,1);
 		$modelName = $name.'Model';
 		if( class_exists($modelName) ){
-			$cache[$guid] = new $modelName();
+			$cache[$guid] = new $modelName('',$tablePrefix, $connection);
 			return $cache[$guid];
 		}
-	}
-	// 没有该类，则为表名或空model
-	if(!$connection){
-		$connection = $GLOBALS['config']['database'];
 	}
 	$cache[$guid] = new ModelBase($name, $tablePrefix, $connection);
     return $cache[$guid];
@@ -104,25 +108,37 @@ function ActionApply($action,$args=array()){
 	if(is_array($action)){ //可调用方法; array($this,'log');
 		return call_user_func_array($action,$args);
 	}
-
 	if(isset($_cache[$action])){
 		return call_user_func_array($_cache[$action],$args);
 	}
+	
 	if(function_exists($action)){ //全局函数;
 		$_cache[$action] = $action;
 	}else{
-		$last 	  	= strrpos($action,'.');
-		$className	= substr($action,0,$last);
-		$method   	= substr($action,$last + 1);
+		$arrs  = explode('.',$action);
+		$arrs  = is_array($arrs) ? $arrs : array();
+		
+		$className	= substr($action,0,strrpos($action,'.'));
+		$method   	= $arrs[count($arrs) - 1];
 		$obj 		= Action($className);
-		if(!$method || !is_object($obj) || !method_exists($obj,$method)){
+		if(!$method || !is_object($obj)){
 			return actionCallError("$action method not exists!");
+		}
+
+		// 类查存在,最后一个不是方法时,默认将第三个参数作为参数; 支持多参数调用方式;
+		// http://127.0.0.1/kod/kodbox/?test/test/index/page/1/limit/10
+		if(!method_exists($obj,$method)){
+			if(!$arrs[2] || !method_exists($obj,$arrs[2])){
+				return actionCallError("$action method not exists!");
+			}
+			$method = $arrs[2];
 		}
 		$_cache[$action] = array($obj,$method);
 	}
 	return call_user_func_array($_cache[$action], $args);
 }
 function actionCallError($msg){
+	return false;
 	// think_exception($msg,false);
 	write_log($msg."\n".get_caller_msg(),'error');
 	return false;
@@ -177,7 +193,7 @@ function ActionCallApi($uri,$param='',$allowExec=true){
  * 调用控制器,插件方法,或直接调用函数; 拦截show_json退出;返回show_json的内容数组;
  * 
  * 调用方法有多个show_json;默认返回第一个调用的结果; 
- * 注: 为避免后续继续执行引起其他问题,需要在前面show_json前加上return;
+ * 注: 为避免后续继续执行引起其他问题,需要在前面show_json前加上return (容易出bug,逐步废弃,用ActionCallResult替代)
  */
 function ActionCallHook($action){
 	ob_start();
@@ -186,8 +202,18 @@ function ActionCallHook($action){
 	$result = ActionApply($action,$args);
 	$echo   = ob_get_clean();
 	$result = $echo ? json_decode($echo,true) : $result;// 优先使用输出内容;
+	$GLOBALS['SHOW_JSON_NOT_EXIT_DONE'] = 0;
 	$GLOBALS['SHOW_JSON_NOT_EXIT'] = 0;
 	return $result;
+}
+
+/**
+ * 调用控制器,插件方法,或直接调用函数; 并对show_json输出进行处理;
+ */
+function ActionCallResult($action,$resultParse){
+	$args = array_slice(func_get_args(),2);
+	$GLOBALS['SHOW_JSON_RESULT_PARSE'] = $resultParse;
+	ActionApply($action,$args);
 }
 
 function beforeShutdown(){

@@ -6,8 +6,29 @@ class clientPlugin extends PluginBase{
 	}
 	public function regist(){
 		$this->hookRegist(array(
-			'user.commonJs.insert'	=> 'clientPlugin.echoJs'
+			'user.commonJs.insert'		=> 'clientPlugin.echoJs',
+			'user.view.options.after'	=> 'clientPlugin.tfa.index.options',
+			'user.index.loginAfter'		=> 'clientPlugin.tfa.index.loginAfter',
 		));
+	}
+
+	public function echoJs(){
+		// 注册hook事件
+		$version = '1.26';
+		$config = $this->getConfig();
+		if ($config['registVer'] != $version) {
+			$plugin = $this->modelPlugin->loadList('client');
+			if (!isset($plugin['regiest']['user.index.loginAfter'])) {
+				$this->regist();
+			}
+			$this->setConfig('registVer', $version);
+		}
+		$this->echoFile('static/main.js');
+	}
+
+	// tfa相关功能
+	public function tfa(){
+		Action($this->pluginName . "Plugin.tfa.index")->index();
 	}
 	
 	private function needPost(){

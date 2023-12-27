@@ -4,41 +4,20 @@ if(!function_exists('gzinflate')){
     show_tips("不支持gzinflate ,<br/>请安装php-zlib 扩展后再试");exit;
 }
 function allowCROS(){
+	if(isset($GLOBALS['_allowCROS'])){return;} // 只调用一次;
+	$GLOBALS['_allowCROS'] = true;
+	
 	$allowMethods = 'GET, POST, OPTIONS, DELETE, HEAD, MOVE, COPY, PUT, MKCOL, PROPFIND, PROPPATCH, LOCK, UNLOCK';
 	$allerHeaders = 'ETag, Content-Type, Content-Length, Accept-Encoding, X-Requested-with, Origin, Authorization';
 	header('Access-Control-Allow-Origin: *');    				// 允许的域名来源;
 	header('Access-Control-Allow-Methods: '.$allowMethods); 	// 允许请求的类型
 	header('Access-Control-Allow-Headers: '.$allerHeaders);		// 允许请求时带入的header
 	header('Access-Control-Allow-Credentials: true'); 			// 设置是否允许发送 cookie; js需设置:xhr.withCredentials = true;
-	header('Access-Control-Max-Age: 3600');
+	header('Access-Control-Max-Age: 3600');	
 }
 
 //扩展名权限判断 有权限则返回1 不是true
-function checkExt($file){
-	if(_get($GLOBALS,'isRoot')) return 1;
-	if(strstr($file,'<') || strstr($file,'>') || $file=='') {
-		return 0;
-	}
-	
-	//'php|phtml|phtm|pwml|asp|aspx|ascx|jsp|pl|htaccess|shtml|shtm'
-	$notAllow = strtolower($GLOBALS['auth']['extNotAllow']);
-	$extArr = explode('|',$notAllow);
-	if(in_array('asp',$extArr)){
-		$extArr = array_merge($extArr,array('aspx','ascx','pwml'));
-	}
-	if(in_array('php',$extArr)){
-		$extArr = array_merge($extArr,array('phtml','phtm','htaccess','pwml'));
-	}
-	if(in_array('htm',$extArr) || in_array('html',$extArr)){
-		$extArr = array_merge($extArr,array('html','shtml','shtm','html'));
-	}
-	foreach ($extArr as $current) {
-		if ($current !== '' && stristr($file,'.'.$current)){//含有扩展名
-			return 0;
-		}
-	}
-	return 1;
-}
+function checkExt($file){return checkExtSafe($file);}
 function checkExtSafe($file){
 	if($file == '.htaccess' || $file == '.user.ini') return false;
 	if(strstr($file,'<') || strstr($file,'>') || $file=='') return false;
@@ -83,12 +62,11 @@ function appHostGet(){
 			$data = url_request($checkUrl,0,0,0,0,0,0.5);
 			$data = !empty($data['data']) ? $data['data'] : '';
 		}
-		if(trim($data) == '[ok]') {
-			$split = '?';
-		}
+		if(trim($data) == '[ok]') {$split = '?';}
 		@file_put_contents($resultFile,$split);
 	}
-	return $appHost.$split;
+	$host = $appHost.$split;
+	return $host;
 }
 
 //-----解压缩跨平台编码转换；自动识别编码-----
@@ -126,14 +104,8 @@ function zip_pre_name($fileName,$toCharset=false){
 
 //解压缩文件名检测
 function unzip_filter_ext($name){
-	$add = '.txt';
-	if( checkExt($name) &&
-		!stristr($name,'user.ini') &&
-		!stristr($name,'.htaccess')
-	){//允许
-		return $name;
-	}
-	return $name.$add;
+	return $name;// 暂不处理(临时文件夹中处理; 通过加密目录进行隐藏)
+	return $name.(checkExtSafe($name) ? '':'.txt');
 }
 //解压到kod，文件名处理;识别编码并转换到当前系统编码
 function unzip_pre_name($fileName){
@@ -298,6 +270,35 @@ function get_post_max(){
 	$theMax = $upload<$post?$upload:$post;
 	return $theMax;
 }
+function get_nginx_post_max(){
+	if(!stristr($_SERVER['SERVER_SOFTWARE'],'nginx')) return false;
+	if(!function_exists('shell_exec')) return false;
+	$info = shell_exec('nginx -t 2>&1 ');//client_max_body_size
+	if(!$info || !strstr($info,'the configuration file')) return false;
+	
+	preg_match("/the configuration file\s+(.*)\s+syntax is ok/i",$info,$match);
+	if(!is_array($match) || !$match[1] || !file_exists($match[1])) return false;
+	$content = @file_get_contents($match[1]);
+	if(!$content || !strstr($content,'client_max_body_size')) return false;
+	$content = preg_replace("/\s*#.*/",'',$content);
+	
+	preg_match("/client_max_body_size\s+(\d+\w)/i",$content,$match);
+	if(!is_array($match) || !$match[1]) return false;
+	return size_to_byte($match[1]);
+}
+function size_to_byte($value){
+	$value = trim($value);
+	if(!$value || $value <= 0) return 0;
+	$number = substr($value, 0, -1);
+	$unit = strtolower(substr($value, - 1));
+	switch ($unit){
+		case 'k':$number *= 1024;break;
+		case 'm':$number *= (1024 * 1024);break;
+		case 'g':$number *= (1024 * 1024 * 1024);break;
+		default:break;
+	}
+	return $number;
+}
 
 function phpBuild64(){
 	if(PHP_INT_SIZE === 8) return true;//部分版本,64位会返回4;
@@ -359,6 +360,7 @@ function init_cli(){
 }
 // 不允许双引号
 function escapeShell($param){
+	if (!$param && $param !== 0 && $param !== '0') return '';//空值
 	return escapeshellarg($param);
 	//$param = escapeshellarg($param);
 	$os = strtoupper(substr(PHP_OS, 0,3));
@@ -428,9 +430,7 @@ function hash_decode($str) {
 // 目录hash;
 function hash_path($path,$addExt=false){
 	$password = Model('SystemOption')->get('systemPassword');
-	if(!$password){
-		$password = 'kodcloud';
-	}
+	if(!$password){$password = 'kodcloud';}
 
 	$pre = substr(md5($path.$password),0,8);
 	$result = $pre.md5($path);
@@ -438,14 +438,10 @@ function hash_path($path,$addExt=false){
 		$result = $pre.md5($path.filemtime($path));
 		if(filesize($path) < 50*1024*1024){
 			$fileMd5 = @md5_file($path);
-			if($fileMd5){
-				$result = $fileMd5;
-			}
+			if($fileMd5){$result = $fileMd5;}
 		}
 	}
-	if($addExt){
-		$result = $result.'.'.get_path_ext($path);
-	}
+	if($addExt){$result = $result.'.'.get_path_ext($path);}
 	return $result;
 }
 

@@ -24,9 +24,6 @@ class webdavServerKod extends webdavServer {
 		if($method == 'httpOPTIONS'){
 			return self::response($this->httpOPTIONS());
 		}
-		if($method == 'httpHEAD'){ // win10,office打开异常情况处理;不校验权限;
-			return self::response($this->httpHEAD());
-		}
 		
 		$this->checkUser();
 		$this->initPath($this->davPre);
@@ -35,10 +32,24 @@ class webdavServerKod extends webdavServer {
 		$this->response($result);
     }
 	
+	// head时一直返回200; 登录失败或无权限则直接返回; 登录检测等成功同理多了文件信息;
+	// 兼容 win10下office打开异常情况;
+	private function checkErrorHead(){		
+		if(HttpHeader::method() != 'HEAD') return;
+		self::response(array(
+			'code' => 200,
+			'headers' => array(
+				'Content-Type: text/html; charset=utf8',
+			)
+		));exit;
+	}
+	
 	// 错误处理;(空间不足,无权限等)
 	public function showErrorCheck($json){
 		if(!is_array($json)) return $json;
 		if($json['code'] == true || $json['code'] == 1) return $json;
+		
+		$this->checkErrorHead();
 		$this->lastError = is_string($json['data']) ?$json['data']:'';
 		$this->response(array('code'=>404));exit;
 	}
@@ -69,6 +80,7 @@ class webdavServerKod extends webdavServer {
     		$find = ActionCall('user.index.userInfo', $user['user'],$user['pass']);
     		if ( !is_array($find) || !isset($find['userID']) ){
     			// $this->plugin->log(array($user,$find,$_SERVER['HTTP_AUTHORIZATION'],$GLOBALS['_SERVER']));
+				$this->checkErrorHead();
     			return HttpAuth::error();
     		}
     		ActionCall('user.index.loginSuccess',$find);
@@ -81,6 +93,7 @@ class webdavServerKod extends webdavServer {
 			}
 	    }
 		if(!$this->plugin->authCheck()){
+			$this->checkErrorHead();
 			$this->lastError = LNG('common.noPermission');
 			$this->response(array('code'=>404));exit;
 		}
@@ -289,8 +302,13 @@ class webdavServerKod extends webdavServer {
 		$info = IO::infoFull($path);
 		if($info){	// 文件已存在; 则使用文件父目录追加文件名;
 			$uploadPath = rtrim(IO::pathFather($info['path']),'/').'/'.$name; //构建上层目录追加文件名;
-		}else{// 首次请求创建,文件不存在; 则使用{source:xx}/newfile.txt;
-			$uploadPath = $path;
+		}else{
+			// 首次请求创建,文件不存在; 则使用{source:xx}/newfile.txt; 自动创建文件夹: /src/aa/s.txt => / [文件夹不存在时]
+			$pathFatherStr = get_path_father($path);
+			$pathFather    = IO::mkdir($pathFatherStr); 
+			$uploadPath    = rtrim($pathFather,'/').'/'.$name;
+			$this->plugin->log("pathPut-mkdir:pathFatherStr=$pathFatherStr;pathFather=$pathFather;uploadPath=$uploadPath");
+			//$uploadPath = $path;
 		}
 		$this->pathPutCheckKod($uploadPath);
 
@@ -301,6 +319,7 @@ class webdavServerKod extends webdavServer {
 		if($localFile){
 			$size = filesize($localFile);
 			$result = IO::upload($uploadPath,$localFile,true,REPEAT_REPLACE);
+			// $result = IO::move($localFile,$uploadPath,REPEAT_REPLACE);
 			$this->pathPutRemoveTemp($uploadPath);
 		}else{
 			if(!$info){ // 不存在,创建;
@@ -435,7 +454,29 @@ class webdavServerKod extends webdavServer {
 
 		if(!$this->can($path,'download')) return false;
 		if(!$this->can($dest,'edit')) return false;
-		return IO::copy($path,$dest);
+		
+		$fromName = get_path_this($pathUrl); 
+		$destName = get_path_this($destURL);
+		$destName = $fromName != $destName ? $destName : '';
+		return IO::copy($path,$dest,false,$destName);
+	}
+	
+	// 上传临时目录; 优化: 默认存储io为本地时,临时目录切换到对应目录的temp/下;(减少从头temp读取->写入到存储i)
+	public function uploadFileTemp(){
+		$tempPath = TEMP_FILES;
+		$path = $this->pathCreateParent();// 上传到目录转换; /dav/test/1.txt=> {source:23}/1.txt;
+		$driverInfo = KodIO::pathDriverType($path);
+		if($driverInfo && $driverInfo['type'] == 'local'){
+			$truePath = rtrim($driverInfo['path'],'/').'/';
+			$isSame = KodIO::isSameDisk($truePath,TEMP_FILES);
+			if(!$isSame && file_exists($truePath)){$tempPath = $truePath;}
+		}
+		
+		if(!file_exists($tempPath)){
+			@mk_dir($tempPath);
+			touch($tempPath.'index.html');
+		}
+		return $tempPath;
 	}
 	
 	// 文件编辑锁添加或移除;(office/wps: 打开编辑时会添加; 保存时会添加/解除; 关闭文件时会解锁)
@@ -451,7 +492,7 @@ class webdavServerKod extends webdavServer {
 	}
 	private function fileLockCheck($path){
 		$info = IO::infoFull($path);
-		if(!$info || !$info['sourceID'] || !defined('USER_ID')) return;
+		if(!$info || !$info['sourceID'] || !USER_ID) return;
 		if(!$this->can($path,'edit')) return;
 		return $info;
 	}

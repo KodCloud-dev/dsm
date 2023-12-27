@@ -33,9 +33,8 @@ class userBind extends Controller {
 		// 1.2 判断邮箱是否已绑定-他人
 		if ($res = Model('User')->userSearch(array($type => $data['input']), 'name,nickName')) {
 			$typeTit = $type . ($type == 'phone' ? 'Number' : '');
-			show_json(LNG('common.' . $typeTit) . LNG('common.error'), false);
-			// $name = $res['nickName'] ? $res['nickName'] : $res['name'];
-			// show_json(LNG('common.' . $type) . LNG('user.bindOthers') . "[{$name}]", false);
+			$message = $type == 'phone' ? LNG('ERROR_USER_EXIST_PHONE') : LNG('ERROR_USER_EXIST_EMAIL');
+			show_json($message.'.', false);
 		}
 		$data['source'] = 'bind';
 		Action('user.setting')->checkMsgFreq($data);	// 消息发送频率检查
@@ -62,28 +61,28 @@ class userBind extends Controller {
 	 * @param [type] $action
 	 * @return void
 	 */
-	public function sendEmail($input, $action) {
+	public function sendEmail($input, $action,$title = '',$code = false) {
 		$systemName = Model('SystemOption')->get('systemName');
 		$user = Session::get('kodUser');
-		$name = _get($user, 'nickName', _get($user, 'name'));
+		$name = _get($user,'nickName',_get($user,'name',''));
+		$desc = Model('SystemOption')->get('systemDesc');
+		$code = $code ? $code : rand_string(6,1);
+		if(!$name && isset($user['name'])){$name = $user['name'];}
 		$data = array(
 			'type'		=> 'email',
 			'input'		=> $input,
 			'action'	=> $action,
 			'config'	=> array(
 				'address'	=> $input,
-				'subject'	=> "[{$systemName}]" . LNG('user.emailVerify'),
+				'subject'	=> "[{$systemName}]" . LNG('user.emailVerify').$title,
 				'content'	=> array(
 					'type'	=> 'code', 
-					'data'	=> array(
-						'user' => $name,
-						'code' => rand_string(6)
-					)
+					'data'	=> array('user' => $name,'code' => $code)
 				),
 				'system'	=> array(	// 系统信息
 					'icon'	=> STATIC_PATH.'images/icon/fav.png',
 					'name'	=> $systemName,
-					'desc'	=> Model('SystemOption')->get('systemDesc')
+					'desc'	=> $desc
 				),
 			)
 		);
@@ -113,6 +112,7 @@ class userBind extends Controller {
 	 */
 	public function apiRequest($type, $data = array()) {
 		$kodid = md5(BASIC_PATH . Model('SystemOption')->get('systemPassword'));
+		if(is_array($data) && defined('INSTALL_CHANNEL')){$data['channel'] = INSTALL_CHANNEL;}
 		$post = array(
 			'type'		 => $type,
 			'kodid'		 => $kodid,
@@ -124,6 +124,13 @@ class userBind extends Controller {
 		$response = url_request($url, 'GET', $post);
 		if ($response['status']) {
 			$data = json_decode($response['data'], true);
+			if (!$data) {	// 平台异常报错（show_tips）
+				if ($response['data']) {
+					preg_match('/<div id="msgbox">(.*?)<\/div>/s', $response['data'], $matches);
+					if ($matches[1]) write_log('API request error: '.$matches[1], 'error');
+				}
+				return array('code' => false, 'data' => LNG('explorer.systemError'));
+			}
 			// secret有变更，和平台不一致
 			if (!$data['code'] && isset($data['info']) && $data['info'] == '40003') {
 				Model('SystemOption')->set('systemSecret', '');
@@ -152,25 +159,23 @@ class userBind extends Controller {
 		return strtoupper($md5); //生成签名
 	}
 
-	/**
-	 * 获取api secret
-	 * @return type
-	 */
+	//获取api secret
 	private function getApiSecret($kodid, $type) {
-		// 从本地获取
 		$secret = Model('SystemOption')->get('systemSecret');
 		if ($secret) return $secret;
 		// 本身为获取secret请求时，secret以kodid代替
 		if ($type == 'secret') return $kodid;
 
-		// 从平台获取
-		$res = $this->apiRequest('secret');
-		if (!$res['code']) {
-			$msg = 'Api secret error' . (!empty($res['data']) ? ': ' . $res['data'] : '');
-			show_json($msg, false);
+		// 从平台获取;需要站点认证; kodid变化重新获取(服务端重新生成)
+		$initPass  = Model('SystemOption')->get('systemPassword');
+		$res  = $this->apiRequest('secret',array('initPath'=>BASIC_PATH,'initPass'=>$initPass));
+		if (!$res['code'] || !$res['data']) {
+			$msg = !empty($res['data']) ? ': ' . $res['data'] : '';
+			show_json('Api secret error. '.$msg, false);
 		}
-		Model('SystemOption')->set('systemSecret', $res['data']);
-		return $res['data'];
+		$secret = addslashes($res['data']);
+		Model('SystemOption')->set('systemSecret', $secret);
+		return $secret;
 	}
 
 }

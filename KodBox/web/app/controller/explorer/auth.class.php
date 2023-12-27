@@ -18,7 +18,7 @@ class explorerAuth extends Controller {
 		parent::__construct();
 		$this->isShowError = true; //检测时输出报错;
 		$this->actionPathCheck = array(
-			'show'		=> array("explorer.list"=>'path'),
+			'show'		=> array("explorer.list"=>'path,listAll'),
 			'view'		=> array(
 				'explorer.index'=>'fileOut,fileOutBy,fileView,fileThumb',
 				'explorer.editor' =>'fileGet'
@@ -201,26 +201,6 @@ class explorerAuth extends Controller {
 		$this->isShowError = true;
 		return $result;
 	}
-	
-	// 权限角色判断;
-	private function canCheckRole($action){
-		$userRoleMap = array(
-			// 'show'		=> true, //不判断查看;
-			'view'		=> 'explorer.view',
-			'download'	=> 'explorer.download',
-			'upload'	=> 'explorer.upload',
-			'edit' 		=> 'explorer.edit',
-			'remove'	=> 'explorer.remove',
-			'share'		=> 'explorer.share',
-			'comment'	=> 'explorer.edit',
-			'event'		=> 'explorer.edit',
-			'root'		=> 'explorer.edit',
-		);
-		if(isset($userRoleMap[$action])){
-			return Action("user.authRole")->authCan($userRoleMap[$action]);
-		}
-		return true;
-	}
 
 	/**
 	 * 检测文档权限，是否支持$action动作
@@ -242,7 +222,7 @@ class explorerAuth extends Controller {
 		$ioType = $parse['type'];
 		
 		if( $ioType == KodIO::KOD_SHARE_LINK && $action == 'view' ) return true;		
-		if(!$isRoot && !$this->canCheckRole($action)){
+		if(!$isRoot && !Action('user.authRole')->canCheckRole($action)){
 			return $this->errorMsg(LNG('explorer.noPermissionAction'),1021);
 		}
 		// 物理路径 io路径拦截；只有管理员且开启了访问才能做相关操作;
@@ -288,9 +268,14 @@ class explorerAuth extends Controller {
 
 		$pathInfo = IO::infoAuth($parse['pathBase']);
 		Hook::trigger("explorer.auth.can",$pathInfo,$action);
+		// 个人私密空间是否登录检测;
+		if($pathInfo && isset($pathInfo['sourceID']) && $pathInfo['targetType'] == 'user'){
+			$userSafeCheck = Action('explorer.listSafe')->authCheck($pathInfo,$action);
+			if($userSafeCheck){return $this->errorMsg($userSafeCheck,1101);}
+		}
 		// source 类型; 新建文件夹 {source:10}/新建文件夹; 去除
 		//文档类型检测：屏蔽用户和部门之外的类型；
-		if($isRoot && $this->config["ADMIN_ALLOW_SOURCE"]) return true;
+		if($this->allowRootSourceInfo($pathInfo)) return true;
 		$targetType = $pathInfo['targetType'];
 		// if(!$pathInfo) return true; 
 		if(!$pathInfo){//不存在,不判断文档权限;
@@ -315,6 +300,13 @@ class explorerAuth extends Controller {
 			return $this->errorMsg(LNG('explorer.noPermissionAction'),1100);
 		}
 		return true;
+	}
+	
+	public function allowRootSourceInfo($pathInfo){
+		$isRoot = _get($GLOBALS,'isRoot');
+		if($isRoot && $this->config["ADMIN_ALLOW_SOURCE"]) return true;
+		if($isRoot && $pathInfo && $pathInfo['pathType'] == '{systemRecycle}') return true;
+		return false;
 	}
 
 	// 路径类型中: 检测目录是否可操作(属性,重命名,新建上传等); 纯虚拟路径只能列表;
@@ -384,12 +376,21 @@ class explorerAuth extends Controller {
 	 */
 	public function checkShare($shareID,$sourceID,$method){
 		$shareInfo = Model('Share')->getInfoAuth($shareID);
-		$sharePath = $shareInfo['sourceID'];
+		$sharePath = $shareInfo['sourceID'].'';
 		if(!$shareInfo || !$shareInfo['sourceInfo'] ){
 			return $this->errorMsg(LNG('explorer.share.notExist'));
 		}
 		if( $sharePath == $sourceID && $method =='remove' ){
 			return $this->errorMsg("source share root can't remove !");
+		}
+		
+		// 自己协作分享的内容; 权限同自己拥有的权限;
+		if($shareInfo['userID'] == USER_ID){
+			$sourceInfo = $shareInfo['sourceInfo'];
+			if( $sourceInfo['targetType'] == 'user' && $sourceInfo['targetID'] == USER_ID ){
+				return Action('user.authRole')->canCheckRole($method);
+			}
+			return $this->checkAuthMethod($shareInfo['sourceInfo']['auth']['authValue'],$method);
 		}
 
 		// 分享时间处理;

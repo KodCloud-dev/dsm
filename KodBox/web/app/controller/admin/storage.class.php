@@ -29,6 +29,14 @@ class adminStorage extends Controller {
 	public function getConfig(){
 		$id = Input::get('id','int');
 		$res = $this->model->getConfig($id);
+		// 隐藏密码
+		$arr = array('secret','userpass','password');	// os、ftp/uss、dav
+		foreach ($arr as $key) {
+			if (isset($res[$key])) {
+				$res[$key] = str_repeat('*', strlen($res[$key]));
+				break;
+			}
+		}
 		show_json($res,true);
 	}
 

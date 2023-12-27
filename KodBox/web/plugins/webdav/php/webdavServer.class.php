@@ -146,6 +146,7 @@ class webdavServer {
 		$picker = array(
 			'hasFile','hasFolder','fileInfo','fileInfoMore','oexeContent','parentID','isTruePath',
 			'isReadable','isWriteable','sourceRoot','icon','iconClassName','children',
+			'listAllChildren','fileThumb','fileThumbCover','fileShowView',
 		);
 		foreach ($picker as $key){
 			if(array_key_exists($key,$itemFile)){$infoMore[$key] = $itemFile[$key];}
@@ -204,6 +205,13 @@ class webdavServer {
 			HttpHeader::get('X_DAV_ACTION') == 'infoChildren'){
 			$pathInfo = IO::infoWithChildren($pathInfo['path']);
 		}
+		
+		// kodbox 挂载kod存储; listAll请求优化;
+		if( $pathInfo['type'] == 'folder' && 
+			isset($_SERVER['HTTP_X_DAV_ACTION']) && $_SERVER['HTTP_X_DAV_ACTION'] == 'kodListAll'){
+			$pathInfo['listAllChildren'] = IO::listAllSimple($this->path,true);
+		}
+		
 		if($isInfo){
 			$list = array($pathInfo);
 		}else{
@@ -293,7 +301,7 @@ class webdavServer {
 	}
 	// 分片支持; X-Expected-Entity-Length
 	public function httpPUT() {
-		$tempFile = $this->uploadFile();
+		$tempFile = $this->uploadFileLocal();
 		if($tempFile){
 			$code = 204; 
 		}else{
@@ -301,20 +309,21 @@ class webdavServer {
 			$code = 201;
 		}
 		$result = $this->pathPut($this->path,$tempFile);
+		@unlink($tempFile);
 		if($result == false){$code = 404;}
 		return array("code"=>$code);
 	}
 	
+	public function uploadFileTemp(){
+		return TEMP_FILES;
+	}
 	// 兼容move_uploaded_file 和 流的方式上传
-	private function uploadFile(){
-		@mk_dir(TEMP_FILES);
-		$dest 	= TEMP_FILES.'upload_dav_'.rand_string(32);
+	public function uploadFileLocal(){
+		$dest 	= TEMP_FILES.'upload_dav_'.rand_string(32);mk_dir(TEMP_FILES);
 		$outFp 	= @fopen($dest, "wb");
 		$in  	= @fopen("php://input","rb");
-		if(!$in || !$outFp){
-			@unlink($dest);return false;
-		} 	
-		while (!feof($in)) {
+		if(!$in || !$outFp){@unlink($dest);return false;} 	
+		while(!feof($in)) {
 			fwrite($outFp, fread($in, 1024*200));
 		}
 		fclose($in);fclose($outFp);
@@ -328,7 +337,8 @@ class webdavServer {
 	 */
 	public function httpMKCOL() {
 		if ($this->pathExists($this->path)) {
-            return array('code' => 409);
+            return array('code' => 201); // alist 等程序可能额外调用;
+            // return array('code' => 409);
         }
         $res  = $this->pathMkdir($this->path);
         return array('code' => $res?201:403);
@@ -426,10 +436,10 @@ class webdavServer {
 		if($data['code'] >= 400 && !$data['body']){
 			$data['body'] = $this->errorBody();
 		}
-		// write_log(array($_SERVER['REQUEST_URI'],$header,$GLOBALS['_SERVER']),'webdav');
         if (is_string($data['body'])) {
         	header('Content-Type: text/xml; charset=UTF-8');
         	echo '<?xml version="1.0" encoding="utf-8"?>'."\n".$data['body'];
         }
+		// write_log(array($_SERVER['REQUEST_URI'],$headers,$GLOBALS['_SERVER'],$data),'webdav');
 	}
 }

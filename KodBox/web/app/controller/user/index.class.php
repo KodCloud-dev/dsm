@@ -13,6 +13,7 @@ class userIndex extends Controller {
 		parent::__construct();
 	}
 	public function index(){
+		@ob_end_clean();
 		include(TEMPLATE.'user/index.html');
 	}
 	// 进入初始化; total=10ms左右;
@@ -23,6 +24,7 @@ class userIndex extends Controller {
 			return ActionCall('install.index.check');
 		}
 		$this->initDB();   		//
+		Action('filter.index')->bindBefore();
 		$this->initSession();   //
 		$this->initSetting();   // 
 		init_check_update();	// 升级检测处理;
@@ -32,6 +34,10 @@ class userIndex extends Controller {
 		$this->loginCheck();
 		Model('Plugin')->init();
 		Action('filter.index')->trigger();
+		if(!defined("USER_ID")){
+			$userID = Session::get("kodUser.userID");$userID = 0;
+			define("USER_ID",$userID ? $userID:0);
+		}
 	}
 	public function shutdownEvent(){
 		TaskQueue::addSubmit();		// 结束后有任务时批量加入
@@ -44,16 +50,23 @@ class userIndex extends Controller {
 	}
 	private function initSession(){
 		$this->apiSignCheck();
-		$systemPassword = Model('SystemOption')->get('systemPassword');
-		if(isset($_REQUEST['accessToken'])){
-			$pass = substr(md5('kodbox_'.$systemPassword),0,15);
-			$sessionSign = Mcrypt::decode($_REQUEST['accessToken'],$pass);
-			if(!$sessionSign){
-				show_json(LNG('common.loginTokenError'),ERROR_CODE_LOGOUT);
-			}
-			Session::sign($sessionSign);
+		// 入口不处理cookie,兼容服务器启用了全GET缓存情况(输出前一次用户登录的cookie,导致账号登录异常)
+		$action= strtolower(ACTION);
+		if( $action == 'user.index.index' || $action == 'user.view.call'){
+			Cookie::disable(true);
 		}
 		
+		$systemPass = Model('SystemOption')->get('systemPassword');
+		if(isset($_REQUEST['accessToken'])){
+			$token = $_REQUEST['accessToken'];
+			if(!$token || strlen($token) > 500){show_json('token error!',false);}
+
+			$pass = substr(md5('kodbox_'.$systemPass),0,15);
+			$sessionSign = Mcrypt::decode($token,$pass);
+			if(!$sessionSign){show_json(LNG('common.loginTokenError'),ERROR_CODE_LOGOUT);}
+			if($action == 'user.index.index'){Cookie::disable(false);} // 带token的url跳转入口页面允许cookie输出;
+			Session::sign($sessionSign);
+		}
 		if(!Session::get('kod')){
 			Session::set('kod',1);
 			if(!Session::get('kod')){show_tips(LNG('explorer.sessionSaveError'));}
@@ -62,6 +75,7 @@ class userIndex extends Controller {
 		// 设置csrf防护;
 		if(!Cookie::get('CSRF_TOKEN')){Cookie::set('CSRF_TOKEN',rand_string(16));}
 	}
+	
 	private function initSetting(){
 		if(!defined('STATIC_PATH')){
 			define('STATIC_PATH',$GLOBALS['config']['settings']['staticPath']);
@@ -70,9 +84,12 @@ class userIndex extends Controller {
 		$upload = &$GLOBALS['config']['settings']['upload'];
 		if(isset($sysOption['chunkSize'])){ //没有设置则使用默认;
 			$upload['chunkSize']  = floatval($sysOption['chunkSize']);
-			$upload['ignoreName'] = trim($sysOption['ignoreName']);
-			$upload['chunkRetry'] = intval($sysOption['chunkRetry']);
-			// $upload['httpSendFile']  = $sysOption['httpSendFile'] == '1'; //前端默认屏蔽;
+			
+			// 老版本升级,没有值情况处理;
+			if(isset($sysOption['ignoreName'])){$upload['ignoreName'] = trim($sysOption['ignoreName']);}
+			if(isset($sysOption['chunkRetry'])){$upload['chunkRetry'] = intval($sysOption['chunkRetry']);}
+			if(isset($sysOption['threads'])){$upload['threads'] = floatval($sysOption['threads']);}
+			if($upload['threads'] <= 0){$upload['threads'] = 1;}
 			
 			// 上传限制扩展名,限制单文件大小;
 			$role = Action('user.authRole')->userRoleAuth();
@@ -89,6 +106,11 @@ class userIndex extends Controller {
 				$upload['downloadSpeed'] = floatval($sysOption['downloadSpeed']);
 			}
 		}
+		
+		// 文件历史版本数量限制; 小于等于1则关闭,大于500则不限制;
+		if(isset($sysOption['fileHistoryMax'])){
+			$GLOBALS['config']['settings']['fileHistoryMax'] = intval($sysOption['fileHistoryMax']);
+		}
 		$upload['chunkSize'] = $upload['chunkSize']*1024*1024;
 		$upload['chunkSize'] = $upload['chunkSize'] <= 1024*1024*0.1 ? 1024*1024*0.4:$upload['chunkSize'];
 		$upload['chunkSize'] = intval($upload['chunkSize']);
@@ -102,14 +124,21 @@ class userIndex extends Controller {
 		if( is_array(Session::get('kodUser')) ){
 			return $this->userDataInit();
 		}
+		if(Session::get('kodUserLogoutTrigger')){return;} //主动设置退出,不自动登录;
 		$userID 	= Cookie::get('kodUserID');
 		$loginToken = Cookie::get('kodToken');
 		if ($userID && $loginToken ) {
-			$user = Model('User')->getInfo($userID);
-			if ($user && $this->makeLoginToken($user['userID']) == $loginToken ) {
+			$user = Model('User')->getInfoFull($userID);
+			if ($user && $user['status'] != '0' && $this->makeLoginToken($user['userID']) == $loginToken ) {
 				return $this->loginSuccess($user);
 			}
 		}
+	}
+	
+	private function logoutError($msg,$code){
+		Session::destory();
+		Cookie::remove('kodToken');
+		show_json($msg,$code);
 	}
 	private function userDataInit() {
 		$this->user = Session::get('kodUser');
@@ -117,20 +146,23 @@ class userIndex extends Controller {
 			$findUser = Model('User')->getInfoFull($this->user['userID']);
 			// 用户账号hash对比; 账号密码修改自动退出处理;
 			if($findUser['userHash'] != $this->user['userHash']){
-				Session::destory();
-				show_json(LNG('common.loginTokenError').'(hash)',ERROR_CODE_LOGOUT);
+				$this->logoutError(LNG('common.loginTokenError').'(hash)',ERROR_CODE_LOGOUT);
 			}
-			Session::set('kodUser',$findUser);
+			
+			//优化,避免频繁写入session(file缓存时容易造成并发锁); 变化时更新;或者超过10分钟写入一次;
+			$_lastTime = $this->user['_lastTime'];unset($this->user['_lastTime']);
+			if($this->user != $findUser || time() - $_lastTime > 600){
+			    $findUser['_lastTime'] = time();
+			    Session::set('kodUser',$findUser);
+			}
+			$this->user = $findUser;
 		}
-		if (!$this->user) {
-			Session::destory();
-			show_json('user data error!',ERROR_CODE_LOGOUT);
-		} else if ($this->user['status'] == 0) {
-			Session::destory();
-			show_json(LNG('user.userEnabled'),ERROR_CODE_USER_INVALID);
-		} else if ($this->user['roleID'] == '') {
-			Session::destory();
-			show_json(LNG('user.roleError'),ERROR_CODE_LOGOUT);
+		if(!$this->user) {
+			$this->logoutError('user data error!',ERROR_CODE_LOGOUT);
+		}else if($this->user['status'] == 0) {
+			$this->logoutError(LNG('user.userEnabled'),ERROR_CODE_USER_INVALID);
+		}else if($this->user['roleID'] == '') {
+			$this->logoutError(LNG('user.roleError'),ERROR_CODE_LOGOUT);
 		}
 		
 		$GLOBALS['isRoot'] = 0;
@@ -141,7 +173,7 @@ class userIndex extends Controller {
 		
 		// 计划任务处理; 目录读写所有者为系统;
 		if( strtolower(ACTION) == 'user.view.call'){
-			define('USER_ID','0');
+			define('USER_ID',0);
 			define('MY_HOME','');
 			define('MY_DESKTOP','');
 			return;
@@ -153,18 +185,24 @@ class userIndex extends Controller {
 	}
 
 	public function accessToken(){
-		$pass = Model('SystemOption')->get('systemPassword');
-		$pass = substr(md5('kodbox_'.$pass),0,15);
-		$token = Mcrypt::encode(Session::sign(),$pass,3600*24*30);
-		return $token;
+		$systemPass = Model('SystemOption')->get('systemPassword');
+		$pass = substr(md5('kodbox_'.$systemPass),0,15);
+		return Mcrypt::encode(Session::sign(),$pass,3600*24*30);
 	}
 	public function accessTokenGet(){
-		if(!Session::get('kodUser')){
-			show_json('user not login!',ERROR_CODE_LOGOUT);
-		}
+		if(!Session::get('kodUser')){show_json('user not login!',ERROR_CODE_LOGOUT);}
 		show_json($this->accessToken(),true);
+	}	
+	public function accessTokenCheck($token){
+		if(!$token || strlen($token) > 500) return false;
+
+		$systemPass = Model('SystemOption')->get('systemPassword');
+		$pass = substr(md5('kodbox_'.$systemPass),0,15);
+		$sessionSign = Mcrypt::decode($token,$pass);
+		if(!$sessionSign || $sessionSign != Session::sign()) return false;
+		return true;
 	}
-	
+		
 	// 登录校验并自动跳转 (已登录则直接跳转,未登录则登录成功后跳转)
 	public function autoLogin(){
 		$link = $this->in['link'];
@@ -204,9 +242,16 @@ class userIndex extends Controller {
 	 * 退出处理
 	 */
 	public function logout() {
+		$user = Session::get('kodUser');
+		if(!is_array($user) || !$user['userID']){show_json('ok');}
+		Hook::trigger('user.index.logoutBefore',$user);
+		
+		$lastLogin = time() - $GLOBALS['config']['cache']['sessionTime'] - 10;
+		Model('User')->userEdit($user['userID'],array("lastLogin"=>$lastLogin));
 		Session::destory();
 		Cookie::remove(SESSION_ID,true);
 		Cookie::remove('kodToken');
+		del_dir($BASIC_PATH.'data/temp/_cache');
 		show_json('ok');
 	}
 
@@ -219,8 +264,8 @@ class userIndex extends Controller {
 		$res = $this->loginWithThird();	// app第三方账号登录
 		if($res || $res !== false) return $res;
 		$data = Input::getArray(array(
-			"name"		=> array("check"=>"require"),
-			"password"	=> array('check'=>"require"),
+			"name"		=> array("check"=>"require",'lengthMax'=>100),
+			"password"	=> array('check'=>"require",'lengthMax'=>100),
 			"salt"		=> array("default"=>false),
 		));
 		$checkCode = Input::get('checkCode', 'require', '');
@@ -242,9 +287,7 @@ class userIndex extends Controller {
 		}
 		$this->loginSuccessUpdate($user);
 		//自动登录跳转; http://xxx.com/?user/index/loginSubmit&name=guest&password=guest&auto=1
-		if($this->in['auto'] == '1'){
-			header('Location: '.APP_HOST);exit;
-		}
+		$this->loginAuto();
 		show_json('ok',true,$this->accessToken());
 	}
 	private function loginWithToken(){
@@ -252,7 +295,7 @@ class userIndex extends Controller {
 		$apiToken = $this->config['settings']['apiLoginToken'];
 		$param = explode('|', $this->in['loginToken']);
 		if (strlen($apiToken) < 5 ||
-			count($param) != 2 ||
+			count($param) != 2 || strlen($this->in['loginToken']) > 500 ||
 			md5(base64_decode($param[0]) . $apiToken) != $param[1]
 		) {
 			return show_json('API 接口参数错误!', false);
@@ -262,8 +305,9 @@ class userIndex extends Controller {
 		if(empty($res['userID'])) {
 			return show_json(LNG('user.pwdError'),false);
 		}
-		$user = Model('User')->getInfo($res['userID']);
+		$user = Model('User')->getInfoFull($res['userID']);
 		$this->loginSuccessUpdate($user);
+		$this->loginAuto();
 		return show_json('ok',true,$this->accessToken());
 	}
 	
@@ -286,12 +330,24 @@ class userIndex extends Controller {
 		// 判断执行结果
 		if(isset($third['avatar'])) $third['avatar'] = rawurldecode($third['avatar']);
 		Hook::trigger('user.bind.withApp', $third);
+		$this->loginAuto();
 		return show_json('ok',true,$this->accessToken());
 	}
+
+	// 登录后自动跳转
+	private function loginAuto() {
+		if($this->in['auto'] != '1') return;
+		header('Location: '.APP_HOST);exit;
+	}
 	
-	/**
-	 * 前端（及app）找回密码
-	 */
+	// 刷新用户信息;
+	public function refreshUser($userID){
+		Model('User')->clearCache($userID);
+		$user = Model('User')->getInfoFull($userID);
+		Session::set('kodUser', $user);	
+	}
+	
+	//前端（及app）找回密码
 	public function findPassword(){
 		return Action('user.setting')->findPassword();
 	}
@@ -357,10 +413,12 @@ class userIndex extends Controller {
 	 * 注:完全以当前身份访问, 权限以当前用户为准;
 	 */
 	public function apiSignMake($action,$args,$timeout=false,$appKey='',$uriIndex=false){
-		if(!defined('USER_ID') || !USER_ID) return false;
 		$appSecret = $this->appKeySecret($appKey);
-		if(!$appSecret) return false;
+		if(!$appSecret || !USER_ID){ // 外链分享等情况
+			return APP_HOST.'index.php?'.$action.'&'.http_build_query($args);
+		}
 		
+		$userID  = Session::get('kodUser.userID');
 		$timeout = $timeout ? $timeout : 3600*24*3;
 		$param   = '';
 		$keyList = array(strtolower($action));
@@ -368,12 +426,11 @@ class userIndex extends Controller {
 		foreach($args as $key=>$val){
 			$keyList[] = strtolower($key);
 			$signArr[] = strtolower($key).'='.base64_encode($val);
-			$param = $key.'='.rawurlencode($val).'&';
+			$param .= $key.'='.rawurlencode($val).'&';
 		}
 		$signToken = md5(implode(';',$signArr));//解密时获取
 		$acionKey  = hash_encode(implode(';',$keyList));
-		$actionToken = Mcrypt::encode(USER_ID,$signToken,$timeout);
-		
+		$actionToken = Mcrypt::encode(USER_ID,$signToken,0,md5($appSecret)); // 避免url变化,无法缓存问题;
 		$param .= 'actionToken='.$actionToken.'&actionKey='.$acionKey;
 		// 包含index.php; (跨域时浏览器请求options, 避免被nginx拦截提前处理)
 		if($uriIndex){return APP_HOST.'index.php?'.$action.'&'.$param;}
@@ -382,10 +439,12 @@ class userIndex extends Controller {
 
 	// 解析处理;
 	public function apiSignCheck(){
+		if(isset($_REQUEST['accessToken']) && $_REQUEST['accessToken']){return;} // token优先;
 		$actionToken = $this->in['actionToken'];
 		$actionKey   = $this->in['actionKey'];
 		$appSecret	 = $this->appKeySecret($this->in['appKey']);
 		if(!$actionToken || !$actionToken || !$appSecret) return;
+		if(strlen($actionToken) > 500) return;
 		
 		$action  = str_replace('.','/',ACTION);
 		$keyList = explode(';',hash_decode($actionKey));
@@ -397,9 +456,11 @@ class userIndex extends Controller {
 		}
 		$signToken = md5(implode(';',$signArr));//同上加密计算
 		$userID    = Mcrypt::decode($actionToken,$signToken);
-		$userInfo  = $userID ? Model('User')->getInfo($userID):false;
 		
 		allowCROS();Cookie::disable(true);
+		// 当前为自己则默认使用当前session(是否登录保险箱等session共享;)
+		if($userID && Session::get('kodUser.userID') == $userID){return;} 
+		$userInfo  = $userID ? Model('User')->getInfoFull($userID):false;
 		if(!is_array($userInfo)) {show_json(LNG("explorer.systemError").'.[apiSignCheck]',false);};
 
 		// api临时访问接口; 不处理cookie; 不影响已登录用户session; 允许跨域
