@@ -24,7 +24,7 @@ CustomRestoreUpgrade()
 		backup_web_dir="$BACKUP_PATH/$PKG_DIR"
 	fi
 
-	local restore_item_list="$CONF_FILE config/define.php data plugins"
+	local restore_item_list="$CONF_FILE config/define.php data"
 	for item in $restore_item_list; do
 		if [ -e "$backup_web_dir/$item" ]; then
 			mkdir -p "${WEBSITE_ROOT}/$(dirname "$item")"
@@ -32,6 +32,7 @@ CustomRestoreUpgrade()
 	    fi
 	done
 
+	cp -arn "$backup_web_dir/plugins/." "${WEBSITE_ROOT}/plugins/"
 	rm -rf "$backup_web_dir"
 }
 

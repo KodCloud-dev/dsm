@@ -13,7 +13,7 @@
                 "php": {
                     "profile_name": "KodExplorer Profile",
                     "profile_desc": "PHP Profile for KodExplorer",
-                    "backend": 8,
+                    "backend": 11,
                     "open_basedir": "/var/services/web_packages/kodexplorer:/tmp:/var/services/tmp",
                     "extensions": [
                         "bz2",

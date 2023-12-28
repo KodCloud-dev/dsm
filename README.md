@@ -18,9 +18,11 @@ git checkout DSM7.2
 ```bash
 git clone https://github.com/KodCloud-dev/dsm.git /toolkit/source
 mkdir /toolkit/source/KodBox/web
-# 下载最新kodbox安装包到web下
+cd /toolkit/source/KodBox/web
+curl -L "https://api.kodcloud.com/?app/version&download=server.link" -o kodbox.zip
+unzip kodbox.zip && rm -f kodbox.zip
 sed -i "s/MyISAM/InnoDB/g" /toolkit/source/KodBox/web/app/controller/install/data/mysql.sql
-cp -ar .kodbox/.web/* /toolkit/source/KodBox/web/*
+cp -ar /toolkit/source/.kodbox/.web/* /toolkit/source/KodBox/web/
 ```
 
 构建指定版本和spk套件名称
